@@ -359,8 +359,10 @@ async def get_company_attendance(company_id: str):
     # Get user details for each record
     enriched_records = []
     for record in attendance_records:
+        record = fix_object_id(record)
         user = await db.users.find_one({"id": record["user_id"]})
         if user:
+            user = fix_object_id(user)
             record["user_name"] = f"{user['first_name']} {user['last_name']}"
             record["department"] = user.get("department", "")
             record["position"] = user.get("position", "")
