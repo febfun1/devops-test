@@ -19,6 +19,25 @@ from bson import ObjectId
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Custom JSON encoder for MongoDB ObjectId
+class JSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        return super(JSONEncoder, self).default(obj)
+
+# Helper function to convert ObjectId to string in MongoDB documents
+def fix_object_id(doc):
+    if doc is None:
+        return None
+    if isinstance(doc, list):
+        return [fix_object_id(item) for item in doc]
+    if isinstance(doc, dict):
+        if '_id' in doc:
+            doc['_id'] = str(doc['_id'])
+        return doc
+    return doc
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
