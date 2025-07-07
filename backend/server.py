@@ -413,8 +413,9 @@ async def get_dashboard_stats(user_id: str):
 async def get_company_users(company_id: str):
     users = await db.users.find({"company_id": company_id}).to_list(100)
     
-    # Remove password hashes
+    # Remove password hashes and fix ObjectId
     for user in users:
+        user = fix_object_id(user)
         if "password_hash" in user:
             del user["password_hash"]
     
