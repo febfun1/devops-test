@@ -343,6 +343,7 @@ async def get_attendance_history(user_id: str, days: int = 30):
         "created_at": {"$gte": start_date}
     }).sort("date", -1).to_list(100)
     
+    attendance_records = [fix_object_id(record) for record in attendance_records]
     return attendance_records
 
 @api_router.get("/attendance/company/{company_id}")
