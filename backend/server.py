@@ -217,9 +217,10 @@ async def login_user(login_data: UserLogin):
     if not user["is_active"]:
         raise HTTPException(status_code=401, detail="Account is deactivated")
     
-    # Remove password hash from response
+    # Remove password hash and fix ObjectId from response
     user_dict = user.copy()
     del user_dict["password_hash"]
+    user_dict = fix_object_id(user_dict)
     
     return {"user": user_dict, "message": "Login successful"}
 
