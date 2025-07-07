@@ -331,6 +331,7 @@ async def get_current_attendance(user_id: str):
     if not attendance:
         return {"status": "clocked_out", "message": "No attendance record for today"}
     
+    attendance = fix_object_id(attendance)
     return attendance
 
 @api_router.get("/attendance/history/{user_id}")
