@@ -315,6 +315,9 @@ async def attendance_action(action_data: AttendanceAction):
         upsert=True
     )
     
+    # Fix ObjectId in response
+    attendance_dict = fix_object_id(attendance_dict)
+    
     return {"message": f"Successfully {action_data.action.replace('_', ' ')}", "attendance": attendance_dict}
 
 @api_router.get("/attendance/current/{user_id}")
