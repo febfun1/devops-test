@@ -382,6 +382,8 @@ async def get_dashboard_stats(user_id: str):
         "date": {"$regex": f"^{current_month}"}
     }).to_list(100)
     
+    month_records = [fix_object_id(record) for record in month_records]
+    
     total_hours = sum(record.get("total_hours", 0) for record in month_records)
     total_overtime = sum(record.get("overtime_hours", 0) for record in month_records)
     days_worked = len([r for r in month_records if r.get("total_hours", 0) > 0])
@@ -392,6 +394,9 @@ async def get_dashboard_stats(user_id: str):
         "user_id": user_id,
         "date": today
     })
+    
+    if current_attendance:
+        current_attendance = fix_object_id(current_attendance)
     
     current_status = current_attendance.get("status", "clocked_out") if current_attendance else "clocked_out"
     
