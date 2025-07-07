@@ -234,6 +234,7 @@ async def create_company(company_data: CompanyCreate):
 @api_router.get("/companies", response_model=List[Company])
 async def get_companies():
     companies = await db.companies.find().to_list(100)
+    companies = [fix_object_id(company) for company in companies]
     return [Company(**company) for company in companies]
 
 # Attendance endpoints
