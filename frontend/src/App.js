@@ -1,21 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import axios from 'axios';
+import { loadStripe } from '@stripe/stripe-js';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 // Auth Context
 const AuthContext = React.createContext();
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('lexa_user');
+    const savedOrg = localStorage.getItem('lexa_organization');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
+    }
+    if (savedOrg) {
+      setOrganization(JSON.parse(savedOrg));
     }
     setLoading(false);
   }, []);
@@ -24,9 +33,15 @@ const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post(`${API}/auth/login`, { email, password });
       const userData = response.data.user;
+      const orgData = response.data.organization;
+      
       setUser(userData);
+      setOrganization(orgData);
+      
       localStorage.setItem('lexa_user', JSON.stringify(userData));
-      return { success: true, user: userData };
+      localStorage.setItem('lexa_organization', JSON.stringify(orgData));
+      
+      return { success: true, user: userData, organization: orgData };
     } catch (error) {
       return { success: false, error: error.response?.data?.detail || 'Login failed' };
     }
@@ -46,11 +61,13 @@ const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    setOrganization(null);
     localStorage.removeItem('lexa_user');
+    localStorage.removeItem('lexa_organization');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, organization, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -75,6 +92,412 @@ const LiveClock = () => {
       </div>
       <div className="date-display">
         {time.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      </div>
+    </div>
+  );
+};
+
+// Subscription Component
+const SubscriptionPlans = ({ organization, onSubscribe }) => {
+  const [selectedTier, setSelectedTier] = useState('premium');
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [loading, setLoading] = useState(false);
+  const [pricing, setPricing] = useState({});
+
+  useEffect(() => {
+    loadPricing();
+  }, []);
+
+  const loadPricing = async () => {
+    try {
+      const response = await axios.get(`${API}/subscriptions/pricing`);
+      setPricing(response.data);
+    } catch (error) {
+      console.error('Error loading pricing:', error);
+    }
+  };
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/subscriptions/create-checkout-session`, {
+        organization_id: organization.id,
+        tier: selectedTier,
+        currency: selectedCurrency
+      });
+      
+      window.location.href = response.data.checkout_url;
+    } catch (error) {
+      alert('Failed to create subscription');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tiers = {
+    basic: {
+      name: 'Basic Plan',
+      features: [
+        'Up to 25 employees',
+        'Basic attendance tracking',
+        'Payroll generation',
+        'Basic reports',
+        'Email support'
+      ]
+    },
+    premium: {
+      name: 'Premium Plan',
+      features: [
+        'Up to 100 employees',
+        'Advanced attendance tracking',
+        'Custom branding & logos',
+        'Advanced reports & analytics',
+        'API access',
+        'Priority support'
+      ]
+    },
+    enterprise: {
+      name: 'Enterprise Plan',
+      features: [
+        'Unlimited employees',
+        'White-label solution',
+        'Custom integrations',
+        'Advanced security',
+        'Dedicated support',
+        'Custom features'
+      ]
+    }
+  };
+
+  if (!pricing || !pricing.basic) {
+    return <div>Loading pricing...</div>;
+  }
+
+  return (
+    <div className="subscription-plans">
+      <h2>Choose Your LEXA Plan</h2>
+      
+      <div className="currency-selector">
+        <label>Currency:</label>
+        <select 
+          value={selectedCurrency} 
+          onChange={(e) => setSelectedCurrency(e.target.value)}
+        >
+          <option value="USD">USD ($)</option>
+          <option value="GBP">GBP (£)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="NGN">NGN (₦)</option>
+        </select>
+      </div>
+
+      <div className="plans-grid">
+        {Object.entries(tiers).map(([tierKey, tier]) => (
+          <div 
+            key={tierKey}
+            className={`plan-card ${selectedTier === tierKey ? 'selected' : ''}`}
+            onClick={() => setSelectedTier(tierKey)}
+          >
+            <h3>{tier.name}</h3>
+            <div className="price">
+              {pricing[tierKey] && pricing[tierKey][selectedCurrency] ? (
+                <>
+                  <span className="amount">
+                    {pricing[tierKey][selectedCurrency].symbol}
+                    {(pricing[tierKey][selectedCurrency].amount / 100).toFixed(2)}
+                  </span>
+                  <span className="period">/month</span>
+                </>
+              ) : (
+                <span>Loading...</span>
+              )}
+            </div>
+            <ul className="features">
+              {tier.features.map((feature, index) => (
+                <li key={index}>{feature}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <button 
+        onClick={handleSubscribe}
+        disabled={loading}
+        className="subscribe-button"
+      >
+        {loading ? 'Processing...' : `Subscribe to ${tiers[selectedTier].name}`}
+      </button>
+    </div>
+  );
+};
+
+// Organization Settings Component
+const OrganizationSettings = ({ organization, onUpdate }) => {
+  const [formData, setFormData] = useState({
+    name: organization?.name || '',
+    logo_base64: organization?.logo_base64 || '',
+    primary_color: organization?.primary_color || '#3b82f6',
+    secondary_color: organization?.secondary_color || '#1e293b',
+    address: organization?.address || '',
+    phone: organization?.phone || '',
+    email: organization?.email || '',
+    website: organization?.website || '',
+    tax_id: organization?.tax_id || ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, logo_base64: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await axios.put(`${API}/organizations/${organization.id}`, formData);
+      onUpdate();
+      alert('Organization updated successfully');
+    } catch (error) {
+      alert('Failed to update organization');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="organization-settings">
+      <h3>Organization Settings</h3>
+      
+      <form onSubmit={handleSubmit} className="settings-form">
+        <div className="form-group">
+          <label>Organization Name</label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Logo Upload</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+          />
+          {formData.logo_base64 && (
+            <div className="logo-preview">
+              <img src={formData.logo_base64} alt="Logo preview" />
+            </div>
+          )}
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Primary Color</label>
+            <input
+              type="color"
+              value={formData.primary_color}
+              onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+            />
+          </div>
+          <div className="form-group">
+            <label>Secondary Color</label>
+            <input
+              type="color"
+              value={formData.secondary_color}
+              onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Address</label>
+          <textarea
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            rows="3"
+          />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Website</label>
+            <input
+              type="url"
+              value={formData.website}
+              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+            />
+          </div>
+          <div className="form-group">
+            <label>Tax ID</label>
+            <input
+              type="text"
+              value={formData.tax_id}
+              onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <button type="submit" disabled={loading} className="save-button">
+          {loading ? 'Saving...' : 'Save Changes'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+// Payroll Component
+const PayrollManagement = ({ organization, user }) => {
+  const [payrollRecords, setPayrollRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [generatingPayroll, setGeneratingPayroll] = useState(false);
+  const [payPeriod, setPayPeriod] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
+  });
+
+  useEffect(() => {
+    loadPayrollRecords();
+  }, []);
+
+  const loadPayrollRecords = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/payroll/organization/${organization.id}`);
+      setPayrollRecords(response.data);
+    } catch (error) {
+      console.error('Error loading payroll records:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generatePayroll = async () => {
+    setGeneratingPayroll(true);
+    try {
+      await axios.post(`${API}/payroll/generate/${organization.id}?pay_period_start=${payPeriod.start}&pay_period_end=${payPeriod.end}`);
+      alert('Payroll generated successfully');
+      loadPayrollRecords();
+    } catch (error) {
+      alert('Failed to generate payroll');
+    } finally {
+      setGeneratingPayroll(false);
+    }
+  };
+
+  const downloadPayslip = async (payrollId) => {
+    try {
+      const response = await axios.post(`${API}/payslip/generate`, {
+        payroll_id: payrollId,
+        organization_id: organization.id
+      }, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payslip_${payrollId}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Failed to download payslip');
+    }
+  };
+
+  return (
+    <div className="payroll-management">
+      <h3>Payroll Management</h3>
+      
+      <div className="payroll-actions">
+        <div className="pay-period">
+          <label>Pay Period:</label>
+          <input
+            type="date"
+            value={payPeriod.start}
+            onChange={(e) => setPayPeriod({ ...payPeriod, start: e.target.value })}
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={payPeriod.end}
+            onChange={(e) => setPayPeriod({ ...payPeriod, end: e.target.value })}
+          />
+          <button
+            onClick={generatePayroll}
+            disabled={generatingPayroll}
+            className="generate-button"
+          >
+            {generatingPayroll ? 'Generating...' : 'Generate Payroll'}
+          </button>
+        </div>
+      </div>
+
+      <div className="payroll-records">
+        {loading ? (
+          <div>Loading payroll records...</div>
+        ) : (
+          <div className="records-table">
+            <div className="table-header">
+              <div>Employee</div>
+              <div>Pay Period</div>
+              <div>Total Hours</div>
+              <div>Gross Pay</div>
+              <div>Net Pay</div>
+              <div>Actions</div>
+            </div>
+            {payrollRecords.map((record) => (
+              <div key={record.id} className="table-row">
+                <div>{record.user_name}</div>
+                <div>
+                  {new Date(record.pay_period_start).toLocaleDateString()} - 
+                  {new Date(record.pay_period_end).toLocaleDateString()}
+                </div>
+                <div>{record.total_hours?.toFixed(1)}h</div>
+                <div>{record.currency} {record.gross_pay?.toFixed(2)}</div>
+                <div>{record.currency} {record.net_pay?.toFixed(2)}</div>
+                <div>
+                  <button
+                    onClick={() => downloadPayslip(record.id)}
+                    className="download-button"
+                  >
+                    Download Payslip
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -159,7 +582,8 @@ const Register = ({ onRegister, switchToLogin }) => {
     role: 'employee',
     department: '',
     position: '',
-    hourly_rate: ''
+    hourly_rate: '',
+    phone: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -281,6 +705,16 @@ const Register = ({ onRegister, switchToLogin }) => {
             </div>
           </div>
           
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="Phone number"
+            />
+          </div>
+          
           {error && <div className="error-message">{error}</div>}
           
           <button type="submit" disabled={loading} className="auth-button">
@@ -302,7 +736,7 @@ const Register = ({ onRegister, switchToLogin }) => {
 };
 
 // Dashboard Component
-const Dashboard = ({ user, onLogout }) => {
+const Dashboard = ({ user, organization, onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [dashboardStats, setDashboardStats] = useState(null);
   const [currentAttendance, setCurrentAttendance] = useState(null);
@@ -342,13 +776,14 @@ const Dashboard = ({ user, onLogout }) => {
     }
   };
 
-  const handleAttendanceAction = async (action, projectName = '') => {
+  const handleAttendanceAction = async (action, projectName = '', location = '') => {
     setLoading(true);
     try {
       const response = await axios.post(`${API}/attendance/action`, {
         user_id: user.id,
         action,
-        project_name: projectName || null
+        project_name: projectName || null,
+        location: location || null
       });
       
       // Refresh data
@@ -419,6 +854,9 @@ const Dashboard = ({ user, onLogout }) => {
           {currentAttendance.project_name && (
             <p><strong>Project:</strong> {currentAttendance.project_name}</p>
           )}
+          {currentAttendance.location && (
+            <p><strong>Location:</strong> {currentAttendance.location}</p>
+          )}
         </div>
       )}
     </div>
@@ -455,36 +893,25 @@ const Dashboard = ({ user, onLogout }) => {
     </div>
   );
 
-  const AttendanceHistory = () => (
-    <div className="attendance-history">
-      <h3>Recent Attendance</h3>
-      <div className="history-table">
-        <div className="table-header">
-          <div>Date</div>
-          <div>Clock In</div>
-          <div>Clock Out</div>
-          <div>Total Hours</div>
-          <div>Project</div>
-        </div>
-        {attendanceHistory.map((record, index) => (
-          <div key={index} className="table-row">
-            <div>{record.date}</div>
-            <div>{record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : '-'}</div>
-            <div>{record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-'}</div>
-            <div>{record.total_hours ? record.total_hours.toFixed(1) + 'h' : '-'}</div>
-            <div>{record.project_name || '-'}</div>
-          </div>
-        ))}
+  const OrganizationBranding = () => {
+    if (!organization) return null;
+    
+    return (
+      <div className="organization-branding">
+        {organization.logo_base64 && (
+          <img src={organization.logo_base64} alt={organization.name} className="org-logo" />
+        )}
+        <h1 style={{ color: organization.primary_color }}>{organization.name}</h1>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="dashboard">
       <nav className="dashboard-nav">
         <div className="nav-brand">
-          <h1>LEXA</h1>
-          <span>HR & Attendance</span>
+          <OrganizationBranding />
+          <span>Powered by LEXA</span>
         </div>
         
         <div className="nav-menu">
@@ -500,12 +927,30 @@ const Dashboard = ({ user, onLogout }) => {
           >
             Attendance
           </button>
-          <button 
-            className={currentView === 'profile' ? 'active' : ''}
-            onClick={() => setCurrentView('profile')}
-          >
-            Profile
-          </button>
+          {(user.role === 'admin' || user.role === 'hr') && (
+            <button 
+              className={currentView === 'payroll' ? 'active' : ''}
+              onClick={() => setCurrentView('payroll')}
+            >
+              Payroll
+            </button>
+          )}
+          {user.role === 'admin' && (
+            <button 
+              className={currentView === 'settings' ? 'active' : ''}
+              onClick={() => setCurrentView('settings')}
+            >
+              Settings
+            </button>
+          )}
+          {organization?.subscription_status === 'trial' && (
+            <button 
+              className={currentView === 'subscription' ? 'active' : ''}
+              onClick={() => setCurrentView('subscription')}
+            >
+              Upgrade
+            </button>
+          )}
         </div>
         
         <div className="nav-user">
@@ -525,32 +970,25 @@ const Dashboard = ({ user, onLogout }) => {
                 <StatsCard />
               </div>
             </div>
-            <div className="dashboard-section">
-              <AttendanceHistory />
-            </div>
           </div>
         )}
         
-        {currentView === 'attendance' && (
-          <div className="attendance-view">
-            <AttendanceHistory />
-          </div>
+        {currentView === 'payroll' && (
+          <PayrollManagement organization={organization} user={user} />
         )}
         
-        {currentView === 'profile' && (
-          <div className="profile-view">
-            <div className="profile-card">
-              <h3>Profile Information</h3>
-              <div className="profile-info">
-                <p><strong>Name:</strong> {user.first_name} {user.last_name}</p>
-                <p><strong>Email:</strong> {user.email}</p>
-                <p><strong>Role:</strong> {user.role}</p>
-                <p><strong>Department:</strong> {user.department || 'Not specified'}</p>
-                <p><strong>Position:</strong> {user.position || 'Not specified'}</p>
-                <p><strong>Hourly Rate:</strong> ${user.hourly_rate || 'Not specified'}</p>
-              </div>
-            </div>
-          </div>
+        {currentView === 'settings' && (
+          <OrganizationSettings 
+            organization={organization} 
+            onUpdate={loadDashboardData}
+          />
+        )}
+        
+        {currentView === 'subscription' && (
+          <SubscriptionPlans 
+            organization={organization} 
+            onSubscribe={loadDashboardData}
+          />
         )}
       </main>
     </div>
@@ -571,8 +1009,14 @@ const LandingPage = ({ onGetStarted }) => {
             Perfect for all industries - from musicians and gig workers to schools and traditional businesses. 
             Scale from one employee to thousands with our powerful, intuitive platform.
           </p>
+          <div className="feature-highlights">
+            <div className="highlight">✓ Multi-currency support</div>
+            <div className="highlight">✓ Custom branding</div>
+            <div className="highlight">✓ Advanced payroll</div>
+            <div className="highlight">✓ Real-time attendance</div>
+          </div>
           <button onClick={onGetStarted} className="cta-button">
-            Get Started
+            Get Started - Free Trial
           </button>
         </div>
         <div className="hero-image">
@@ -580,42 +1024,6 @@ const LandingPage = ({ onGetStarted }) => {
             src="https://images.unsplash.com/photo-1580982330720-bd5e0fed108b" 
             alt="Modern workplace technology"
           />
-        </div>
-      </div>
-      
-      <div className="features-section">
-        <h2>Why Choose LEXA?</h2>
-        <div className="features-grid">
-          <div className="feature-card">
-            <div className="feature-icon">⏰</div>
-            <h3>Real-time Attendance</h3>
-            <p>Clock in/out with live tracking, break management, and overtime calculation</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">💰</div>
-            <h3>Smart Payroll</h3>
-            <p>Automated calculations, tax deductions, and pay slip generation</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">🎵</div>
-            <h3>Multi-Industry</h3>
-            <p>Supports musicians, gig workers, schools, and traditional businesses</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">📱</div>
-            <h3>Cross-Platform</h3>
-            <p>Works on desktop, mobile, and kiosk systems</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">📊</div>
-            <h3>Analytics & Reports</h3>
-            <p>Comprehensive insights into attendance, payroll, and HR metrics</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">🔒</div>
-            <h3>Secure & Scalable</h3>
-            <p>Enterprise-grade security that scales from 1 to 10,000+ employees</p>
-          </div>
         </div>
       </div>
     </div>
@@ -631,7 +1039,7 @@ const App = () => {
     <AuthProvider>
       <div className="App">
         <AuthContext.Consumer>
-          {({ user, login, register, logout, loading }) => {
+          {({ user, organization, login, register, logout, loading }) => {
             if (loading) {
               return <div className="loading">Loading...</div>;
             }
@@ -656,7 +1064,7 @@ const App = () => {
               );
             }
 
-            return <Dashboard user={user} onLogout={logout} />;
+            return <Dashboard user={user} organization={organization} onLogout={logout} />;
           }}
         </AuthContext.Consumer>
       </div>
