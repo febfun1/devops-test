@@ -370,11 +370,7 @@ test_plan:
     - "All Previous Endpoints Still Working"
     - "Employee Secret Code Login Frontend"
     - "Profile Management Component"
-  stuck_tasks:
-    - "Attendance - Current Status"
-    - "Attendance - History"
-    - "Attendance - Company Overview"
-    - "User Management - Company Users"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
