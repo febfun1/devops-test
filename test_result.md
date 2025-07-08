@@ -348,21 +348,14 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Authentication - User Login"
-    - "Attendance - Clock Out"
-    - "Attendance - Break Management"
-    - "Attendance - Current Status"
-    - "Attendance - History"
-    - "Dashboard - Statistics"
-    - "User Management - Company Users"
+    - "Employee Secret Code Authentication"
+    - "All Previous Endpoints Still Working"
+    - "Employee Secret Code Login Frontend"
+    - "Profile Management Component"
   stuck_tasks:
-    - "Authentication - User Login"
-    - "Attendance - Clock Out"
-    - "Attendance - Break Management"
     - "Attendance - Current Status"
     - "Attendance - History"
     - "Attendance - Company Overview"
-    - "Dashboard - Statistics"
     - "User Management - Company Users"
   test_all: false
   test_priority: "high_first"
