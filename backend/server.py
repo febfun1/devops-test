@@ -703,6 +703,8 @@ async def approve_leave_request(leave_id: str, approver_id: str, comments: str =
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found")
     
+    leave = fix_object_id(leave)
+    
     # Update leave request
     await db.leave_requests.update_one(
         {"id": leave_id},
