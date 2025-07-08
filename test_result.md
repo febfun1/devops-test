@@ -239,11 +239,11 @@ backend:
 
   - task: "Dashboard - Statistics"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
@@ -251,6 +251,9 @@ backend:
       - working: "fixing"
         agent: "main"
         comment: "Found missing fix_object_id calls in dashboard endpoints. User object not being processed through fix_object_id function before accessing leave_balances."
+      - working: true
+        agent: "main"
+        comment: "FIXED: ObjectId serialization issues resolved. Dashboard statistics endpoint now working correctly."
 
   - task: "User Management - Company Users"
     implemented: true
