@@ -3139,7 +3139,11 @@ const Dashboard = ({ user, organization, onLogout }) => {
           </div>
         )}
         
-        {currentView !== 'dashboard' && (
+        {currentView === 'profile' && (
+          <ProfileManagement user={user} />
+        )}
+        
+        {currentView !== 'dashboard' && currentView !== 'profile' && (
           <div className="coming-soon">
             <TimeveraLogo size="large" />
             <h3>🔧 {currentView.charAt(0).toUpperCase() + currentView.slice(1)} Module</h3>
