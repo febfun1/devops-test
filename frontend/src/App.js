@@ -2391,6 +2391,41 @@ const LandingPage = ({ onGetStarted }) => {
   );
 };
 
+// Landing Page Component
+const LandingPage = ({ onGetStarted }) => {
+  return (
+    <div className="landing-page">
+      <div className="hero-section">
+        <div className="hero-content">
+          <h1>Welcome to LEXA</h1>
+          <p className="hero-subtitle">
+            The comprehensive HR, Payroll & Attendance management system
+          </p>
+          <p className="hero-description">
+            Perfect for all industries - from musicians and gig workers to schools and traditional businesses. 
+            Scale from one employee to thousands with our powerful, intuitive platform.
+          </p>
+          <div className="feature-highlights">
+            <div className="highlight">✓ Multi-currency support</div>
+            <div className="highlight">✓ Custom branding</div>
+            <div className="highlight">✓ Advanced payroll</div>
+            <div className="highlight">✓ Real-time attendance</div>
+          </div>
+          <button onClick={onGetStarted} className="cta-button">
+            Get Started - Free Trial
+          </button>
+        </div>
+        <div className="hero-image">
+          <img 
+            src="https://images.unsplash.com/photo-1580982330720-bd5e0fed108b" 
+            alt="Modern workplace technology"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main App Component
 const App = () => {
   const [showAuth, setShowAuth] = useState(false);
