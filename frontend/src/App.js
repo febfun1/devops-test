@@ -97,6 +97,697 @@ const LiveClock = () => {
   );
 };
 
+// Notifications Component
+const NotificationCenter = ({ user }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showPanel, setShowPanel] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      loadNotifications();
+    }
+  }, [user]);
+
+  const loadNotifications = async () => {
+    try {
+      const response = await axios.get(`${API}/notifications/user/${user.id}`);
+      setNotifications(response.data);
+      setUnreadCount(response.data.filter(n => !n.read).length);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await axios.put(`${API}/notifications/${notificationId}/read`);
+      loadNotifications();
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  return (
+    <div className="notification-center">
+      <button 
+        className="notification-button"
+        onClick={() => setShowPanel(!showPanel)}
+      >
+        🔔
+        {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+      </button>
+      
+      {showPanel && (
+        <div className="notification-panel">
+          <h3>Notifications</h3>
+          <div className="notification-list">
+            {notifications.length === 0 ? (
+              <p>No notifications</p>
+            ) : (
+              notifications.map((notification) => (
+                <div 
+                  key={notification.id} 
+                  className={`notification-item ${notification.read ? 'read' : 'unread'}`}
+                  onClick={() => !notification.read && markAsRead(notification.id)}
+                >
+                  <div className="notification-title">{notification.title}</div>
+                  <div className="notification-message">{notification.message}</div>
+                  <div className="notification-time">
+                    {new Date(notification.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Leave Management Component
+const LeaveManagement = ({ user, organization }) => {
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({
+    leave_type: 'vacation',
+    start_date: '',
+    end_date: '',
+    reason: ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadLeaveRequests();
+  }, []);
+
+  const loadLeaveRequests = async () => {
+    try {
+      let response;
+      if (user.role === 'admin' || user.role === 'hr' || user.role === 'manager') {
+        response = await axios.get(`${API}/leaves/organization/${organization.id}`);
+      } else {
+        response = await axios.get(`${API}/leaves/user/${user.id}`);
+      }
+      setLeaveRequests(response.data);
+    } catch (error) {
+      console.error('Error loading leave requests:', error);
+    }
+  };
+
+  const submitLeaveRequest = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await axios.post(`${API}/leaves/request?user_id=${user.id}`, leaveForm);
+      alert('Leave request submitted successfully');
+      setShowRequestForm(false);
+      setLeaveForm({ leave_type: 'vacation', start_date: '', end_date: '', reason: '' });
+      loadLeaveRequests();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to submit leave request');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const approveLeave = async (leaveId) => {
+    try {
+      await axios.put(`${API}/leaves/${leaveId}/approve?approver_id=${user.id}&comments=Approved`);
+      alert('Leave request approved');
+      loadLeaveRequests();
+    } catch (error) {
+      alert('Failed to approve leave request');
+    }
+  };
+
+  const rejectLeave = async (leaveId) => {
+    const comments = prompt('Reason for rejection:');
+    if (comments) {
+      try {
+        await axios.put(`${API}/leaves/${leaveId}/reject?approver_id=${user.id}&comments=${encodeURIComponent(comments)}`);
+        alert('Leave request rejected');
+        loadLeaveRequests();
+      } catch (error) {
+        alert('Failed to reject leave request');
+      }
+    }
+  };
+
+  return (
+    <div className="leave-management">
+      <div className="leave-header">
+        <h3>Leave Management</h3>
+        {(user.role === 'employee' || user.role === 'manager') && (
+          <button 
+            onClick={() => setShowRequestForm(true)}
+            className="request-leave-btn"
+          >
+            Request Leave
+          </button>
+        )}
+      </div>
+
+      {showRequestForm && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h4>Request Leave</h4>
+            <form onSubmit={submitLeaveRequest}>
+              <div className="form-group">
+                <label>Leave Type</label>
+                <select
+                  value={leaveForm.leave_type}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, leave_type: e.target.value })}
+                >
+                  <option value="vacation">Vacation</option>
+                  <option value="sick">Sick Leave</option>
+                  <option value="personal">Personal</option>
+                  <option value="maternity">Maternity</option>
+                  <option value="paternity">Paternity</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Start Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.start_date}
+                    onChange={(e) => setLeaveForm({ ...leaveForm, start_date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>End Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.end_date}
+                    onChange={(e) => setLeaveForm({ ...leaveForm, end_date: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label>Reason</label>
+                <textarea
+                  value={leaveForm.reason}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
+                  required
+                  rows="3"
+                />
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowRequestForm(false)}>Cancel</button>
+                <button type="submit" disabled={loading}>
+                  {loading ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="leave-requests">
+        <div className="table-header">
+          <div>Employee</div>
+          <div>Type</div>
+          <div>Dates</div>
+          <div>Days</div>
+          <div>Status</div>
+          <div>Actions</div>
+        </div>
+        
+        {leaveRequests.map((request) => (
+          <div key={request.id} className="table-row">
+            <div>{request.user_name || `${user.first_name} ${user.last_name}`}</div>
+            <div className="leave-type">{request.leave_type}</div>
+            <div>
+              {new Date(request.start_date).toLocaleDateString()} - 
+              {new Date(request.end_date).toLocaleDateString()}
+            </div>
+            <div>{request.total_days}</div>
+            <div>
+              <span className={`status-badge ${request.status}`}>
+                {request.status}
+              </span>
+            </div>
+            <div>
+              {request.status === 'pending' && (user.role === 'admin' || user.role === 'hr' || user.role === 'manager') && (
+                <div className="action-buttons">
+                  <button 
+                    onClick={() => approveLeave(request.id)}
+                    className="approve-btn"
+                  >
+                    Approve
+                  </button>
+                  <button 
+                    onClick={() => rejectLeave(request.id)}
+                    className="reject-btn"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Employee Management Component
+const EmployeeManagement = ({ organization, user }) => {
+  const [employees, setEmployees] = useState([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    try {
+      const response = await axios.get(`${API}/employees/organization/${organization.id}`);
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    }
+  };
+
+  const editEmployee = (employee) => {
+    setEditingEmployee(employee);
+    setShowEditModal(true);
+  };
+
+  const updateEmployee = async (employeeData) => {
+    setLoading(true);
+    try {
+      await axios.put(`${API}/employees/${editingEmployee.id}`, employeeData);
+      alert('Employee updated successfully');
+      setShowEditModal(false);
+      setEditingEmployee(null);
+      loadEmployees();
+    } catch (error) {
+      alert('Failed to update employee');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deactivateEmployee = async (employeeId) => {
+    if (window.confirm('Are you sure you want to deactivate this employee?')) {
+      try {
+        await axios.delete(`${API}/employees/${employeeId}`);
+        alert('Employee deactivated successfully');
+        loadEmployees();
+      } catch (error) {
+        alert('Failed to deactivate employee');
+      }
+    }
+  };
+
+  return (
+    <div className="employee-management">
+      <h3>Employee Management</h3>
+      
+      <div className="employees-grid">
+        {employees.map((employee) => (
+          <div key={employee.id} className="employee-card">
+            <div className="employee-header">
+              {employee.avatar_base64 ? (
+                <img src={employee.avatar_base64} alt="Avatar" className="employee-avatar" />
+              ) : (
+                <div className="employee-avatar-placeholder">
+                  {employee.first_name[0]}{employee.last_name[0]}
+                </div>
+              )}
+              <div className="employee-info">
+                <h4>{employee.first_name} {employee.last_name}</h4>
+                <p>{employee.position} • {employee.department}</p>
+                <p className="employee-id">ID: {employee.employee_id}</p>
+              </div>
+            </div>
+            
+            <div className="employee-details">
+              <div className="detail-item">
+                <span>Email:</span> {employee.email}
+              </div>
+              <div className="detail-item">
+                <span>Phone:</span> {employee.phone || 'N/A'}
+              </div>
+              <div className="detail-item">
+                <span>Role:</span> {employee.role}
+              </div>
+              <div className="detail-item">
+                <span>Hourly Rate:</span> ${employee.hourly_rate || 'N/A'}
+              </div>
+              <div className="detail-item">
+                <span>Manager:</span> {employee.manager_name || 'N/A'}
+              </div>
+            </div>
+            
+            <div className="employee-actions">
+              <button onClick={() => editEmployee(employee)} className="edit-btn">
+                Edit
+              </button>
+              <button 
+                onClick={() => deactivateEmployee(employee.id)} 
+                className="deactivate-btn"
+              >
+                Deactivate
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {showEditModal && editingEmployee && (
+        <EmployeeEditModal
+          employee={editingEmployee}
+          onUpdate={updateEmployee}
+          onClose={() => setShowEditModal(false)}
+          loading={loading}
+          employees={employees}
+        />
+      )}
+    </div>
+  );
+};
+
+// Employee Edit Modal Component
+const EmployeeEditModal = ({ employee, onUpdate, onClose, loading, employees }) => {
+  const [formData, setFormData] = useState({
+    first_name: employee.first_name,
+    last_name: employee.last_name,
+    department: employee.department || '',
+    position: employee.position || '',
+    employee_id: employee.employee_id || '',
+    hourly_rate: employee.hourly_rate || '',
+    phone: employee.phone || '',
+    address: employee.address || '',
+    emergency_contact: employee.emergency_contact || '',
+    manager_id: employee.manager_id || ''
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const updateData = {
+      ...formData,
+      hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null
+    };
+    onUpdate(updateData);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal large">
+        <h4>Edit Employee</h4>
+        <form onSubmit={handleSubmit}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>First Name</label>
+              <input
+                type="text"
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Last Name</label>
+              <input
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+          
+          <div className="form-row">
+            <div className="form-group">
+              <label>Department</label>
+              <input
+                type="text"
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Position</label>
+              <input
+                type="text"
+                value={formData.position}
+                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <div className="form-row">
+            <div className="form-group">
+              <label>Employee ID</label>
+              <input
+                type="text"
+                value={formData.employee_id}
+                onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Hourly Rate</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.hourly_rate}
+                onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <div className="form-group">
+            <label>Manager</label>
+            <select
+              value={formData.manager_id}
+              onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
+            >
+              <option value="">No Manager</option>
+              {employees
+                .filter(emp => emp.id !== employee.id && (emp.role === 'manager' || emp.role === 'admin'))
+                .map(manager => (
+                  <option key={manager.id} value={manager.id}>
+                    {manager.first_name} {manager.last_name}
+                  </option>
+                ))}
+            </select>
+          </div>
+          
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Address</label>
+            <textarea
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              rows="3"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Emergency Contact</label>
+            <input
+              type="text"
+              value={formData.emergency_contact}
+              onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
+            />
+          </div>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Employee'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Analytics Dashboard Component
+const AnalyticsDashboard = ({ organization }) => {
+  const [analytics, setAnalytics] = useState({});
+  const [selectedMetric, setSelectedMetric] = useState('attendance');
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [selectedMetric, dateRange]);
+
+  const loadAnalytics = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/analytics/organization/${organization.id}`, {
+        organization_id: organization.id,
+        start_date: dateRange.start,
+        end_date: dateRange.end,
+        metric_type: selectedMetric
+      });
+      setAnalytics(response.data);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportData = async () => {
+    try {
+      const response = await axios.get(
+        `${API}/export/attendance/${organization.id}?start_date=${dateRange.start}&end_date=${dateRange.end}`,
+        { responseType: 'blob' }
+      );
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_export_${dateRange.start}_${dateRange.end}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Failed to export data');
+    }
+  };
+
+  return (
+    <div className="analytics-dashboard">
+      <h3>Analytics & Reports</h3>
+      
+      <div className="analytics-controls">
+        <div className="metric-selector">
+          <label>Metric:</label>
+          <select
+            value={selectedMetric}
+            onChange={(e) => setSelectedMetric(e.target.value)}
+          >
+            <option value="attendance">Attendance</option>
+            <option value="payroll">Payroll</option>
+            <option value="leaves">Leave Requests</option>
+          </select>
+        </div>
+        
+        <div className="date-range">
+          <label>From:</label>
+          <input
+            type="date"
+            value={dateRange.start}
+            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+          />
+          <label>To:</label>
+          <input
+            type="date"
+            value={dateRange.end}
+            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+          />
+        </div>
+        
+        <button onClick={exportData} className="export-btn">
+          Export Data
+        </button>
+      </div>
+
+      {loading ? (
+        <div>Loading analytics...</div>
+      ) : (
+        <div className="analytics-content">
+          {selectedMetric === 'attendance' && analytics.metric_type === 'attendance' && (
+            <div className="analytics-grid">
+              <div className="analytics-card">
+                <h4>Total Hours</h4>
+                <div className="analytics-value">{analytics.total_hours?.toFixed(1)}h</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Overtime Hours</h4>
+                <div className="analytics-value">{analytics.total_overtime?.toFixed(1)}h</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Unique Employees</h4>
+                <div className="analytics-value">{analytics.unique_employees}</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Avg Hours/Employee</h4>
+                <div className="analytics-value">{analytics.average_hours_per_employee?.toFixed(1)}h</div>
+              </div>
+            </div>
+          )}
+          
+          {selectedMetric === 'payroll' && analytics.metric_type === 'payroll' && (
+            <div className="analytics-grid">
+              <div className="analytics-card">
+                <h4>Total Gross Pay</h4>
+                <div className="analytics-value">${analytics.total_gross_pay?.toFixed(2)}</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Total Net Pay</h4>
+                <div className="analytics-value">${analytics.total_net_pay?.toFixed(2)}</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Total Deductions</h4>
+                <div className="analytics-value">${analytics.total_deductions?.toFixed(2)}</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Number of Payrolls</h4>
+                <div className="analytics-value">{analytics.number_of_payrolls}</div>
+              </div>
+            </div>
+          )}
+          
+          {selectedMetric === 'leaves' && analytics.metric_type === 'leaves' && (
+            <div className="analytics-grid">
+              <div className="analytics-card">
+                <h4>Total Requests</h4>
+                <div className="analytics-value">{analytics.total_requests}</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Approved</h4>
+                <div className="analytics-value">{analytics.approved_requests}</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Pending</h4>
+                <div className="analytics-value">{analytics.pending_requests}</div>
+              </div>
+              <div className="analytics-card">
+                <h4>Approval Rate</h4>
+                <div className="analytics-value">{analytics.approval_rate?.toFixed(1)}%</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Continue with existing components... (SubscriptionPlans, OrganizationSettings, PayrollManagement, etc.)
+// [Rest of the existing components remain the same]
+
 // Subscription Component
 const SubscriptionPlans = ({ organization, onSubscribe }) => {
   const [selectedTier, setSelectedTier] = useState('premium');
