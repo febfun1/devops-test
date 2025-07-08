@@ -85,10 +85,14 @@ class TimeveraHRSystemTest(unittest.TestCase):
             self.assertEqual(result["user"]["email"], email, f"Email mismatch for {role}")
             self.assertEqual(result["user"]["role"], role, f"Role mismatch for {role}")
             
+            # Verify secret code is generated
+            self.assertIn("secret_code", result["user"], f"Secret code not generated for {role}")
+            self.assertIsNotNone(result["user"]["secret_code"], f"Secret code is None for {role}")
+            
             # Store user for later tests
             self.__class__.test_users[role] = result["user"]
             
-            logger.info(f"✅ Registered {role} user: {email}")
+            logger.info(f"✅ Registered {role} user: {email} with secret code: {result['user']['secret_code']}")
     
     def test_04_user_login(self):
         """Test user login functionality"""
