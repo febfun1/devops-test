@@ -388,7 +388,330 @@ const Register = ({ onRegister, switchToLogin }) => {
   );
 };
 
-// Dashboard Component
+// Notifications Component
+const NotificationCenter = ({ user }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showPanel, setShowPanel] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      loadNotifications();
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(loadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const loadNotifications = async () => {
+    try {
+      const response = await axios.get(`${API}/notifications/user/${user.id}`);
+      setNotifications(response.data);
+      setUnreadCount(response.data.filter(n => !n.read).length);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await axios.put(`${API}/notifications/${notificationId}/read`);
+      loadNotifications();
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  return (
+    <div className="notification-center">
+      <button 
+        className="notification-button"
+        onClick={() => setShowPanel(!showPanel)}
+      >
+        🔔
+        {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+      </button>
+      
+      {showPanel && (
+        <div className="notification-panel">
+          <h3>Notifications</h3>
+          <div className="notification-list">
+            {notifications.length === 0 ? (
+              <p>No notifications</p>
+            ) : (
+              notifications.map((notification) => (
+                <div 
+                  key={notification.id} 
+                  className={`notification-item ${notification.read ? 'read' : 'unread'}`}
+                  onClick={() => !notification.read && markAsRead(notification.id)}
+                >
+                  <div className="notification-title">{notification.title}</div>
+                  <div className="notification-message">{notification.message}</div>
+                  <div className="notification-time">
+                    {new Date(notification.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Leave Management Component
+const LeaveManagement = ({ user, organization }) => {
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [leaveForm, setLeaveForm] = useState({
+    leave_type: 'vacation',
+    start_date: '',
+    end_date: '',
+    reason: ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadLeaveRequests();
+  }, []);
+
+  const loadLeaveRequests = async () => {
+    try {
+      let response;
+      if (user.role === 'admin' || user.role === 'hr' || user.role === 'manager') {
+        response = await axios.get(`${API}/leaves/organization/${organization.id}`);
+      } else {
+        response = await axios.get(`${API}/leaves/user/${user.id}`);
+      }
+      setLeaveRequests(response.data);
+    } catch (error) {
+      console.error('Error loading leave requests:', error);
+    }
+  };
+
+  const calculateDays = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const submitLeaveRequest = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await axios.post(`${API}/leaves/request?user_id=${user.id}`, {
+        ...leaveForm,
+        start_date: new Date(leaveForm.start_date).toISOString(),
+        end_date: new Date(leaveForm.end_date).toISOString()
+      });
+      alert('Leave request submitted successfully');
+      setShowRequestForm(false);
+      setLeaveForm({ leave_type: 'vacation', start_date: '', end_date: '', reason: '' });
+      loadLeaveRequests();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to submit leave request');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const approveLeave = async (leaveId) => {
+    try {
+      await axios.put(`${API}/leaves/${leaveId}/approve?approver_id=${user.id}&comments=Approved`);
+      alert('Leave request approved');
+      loadLeaveRequests();
+    } catch (error) {
+      alert('Failed to approve leave request');
+    }
+  };
+
+  const rejectLeave = async (leaveId) => {
+    const comments = prompt('Reason for rejection:');
+    if (comments) {
+      try {
+        await axios.put(`${API}/leaves/${leaveId}/reject?approver_id=${user.id}&comments=${encodeURIComponent(comments)}`);
+        alert('Leave request rejected');
+        loadLeaveRequests();
+      } catch (error) {
+        alert('Failed to reject leave request');
+      }
+    }
+  };
+
+  return (
+    <div className="leave-management">
+      <div className="leave-header">
+        <div>
+          <h3>Leave Management</h3>
+          <p className="section-subtitle">Manage time off requests and approvals</p>
+        </div>
+        {(user.role === 'employee' || user.role === 'manager') && (
+          <button 
+            onClick={() => setShowRequestForm(true)}
+            className="request-leave-btn"
+          >
+            + Request Leave
+          </button>
+        )}
+      </div>
+
+      {/* Leave Balance Summary */}
+      <div className="leave-balance-summary">
+        <div className="balance-card">
+          <h4>Vacation Days</h4>
+          <div className="balance-value">15</div>
+          <div className="balance-label">Remaining</div>
+        </div>
+        <div className="balance-card">
+          <h4>Sick Days</h4>
+          <div className="balance-value">8</div>
+          <div className="balance-label">Remaining</div>
+        </div>
+        <div className="balance-card">
+          <h4>Personal Days</h4>
+          <div className="balance-value">3</div>
+          <div className="balance-label">Remaining</div>
+        </div>
+      </div>
+
+      {showRequestForm && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h4>Request Leave</h4>
+            <form onSubmit={submitLeaveRequest}>
+              <div className="form-group">
+                <label>Leave Type</label>
+                <select
+                  value={leaveForm.leave_type}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, leave_type: e.target.value })}
+                >
+                  <option value="vacation">Vacation</option>
+                  <option value="sick">Sick Leave</option>
+                  <option value="personal">Personal</option>
+                  <option value="maternity">Maternity</option>
+                  <option value="paternity">Paternity</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Start Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.start_date}
+                    onChange={(e) => setLeaveForm({ ...leaveForm, start_date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>End Date</label>
+                  <input
+                    type="date"
+                    value={leaveForm.end_date}
+                    onChange={(e) => setLeaveForm({ ...leaveForm, end_date: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              {leaveForm.start_date && leaveForm.end_date && (
+                <div className="days-calculation">
+                  <strong>Total Days: {calculateDays(leaveForm.start_date, leaveForm.end_date)}</strong>
+                </div>
+              )}
+              
+              <div className="form-group">
+                <label>Reason</label>
+                <textarea
+                  value={leaveForm.reason}
+                  onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
+                  required
+                  rows="3"
+                  placeholder="Please provide a reason for your leave request..."
+                />
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowRequestForm(false)}>Cancel</button>
+                <button type="submit" disabled={loading}>
+                  {loading ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="leave-requests">
+        <h4>Leave Requests</h4>
+        <div className="requests-table">
+          <div className="table-header">
+            <div>Employee</div>
+            <div>Type</div>
+            <div>Dates</div>
+            <div>Days</div>
+            <div>Status</div>
+            <div>Actions</div>
+          </div>
+          
+          {leaveRequests.map((request) => (
+            <div key={request.id} className="table-row">
+              <div className="employee-info">
+                <span className="employee-name">
+                  {request.user_name || `${user.first_name} ${user.last_name}`}
+                </span>
+                <span className="employee-dept">{request.department}</span>
+              </div>
+              <div className="leave-type">{request.leave_type}</div>
+              <div className="leave-dates">
+                {new Date(request.start_date).toLocaleDateString()} - 
+                {new Date(request.end_date).toLocaleDateString()}
+              </div>
+              <div className="leave-days">{request.total_days} days</div>
+              <div>
+                <span className={`status-badge ${request.status}`}>
+                  {request.status}
+                </span>
+              </div>
+              <div>
+                {request.status === 'pending' && (user.role === 'admin' || user.role === 'hr' || user.role === 'manager') && (
+                  <div className="action-buttons">
+                    <button 
+                      onClick={() => approveLeave(request.id)}
+                      className="approve-btn"
+                    >
+                      ✓ Approve
+                    </button>
+                    <button 
+                      onClick={() => rejectLeave(request.id)}
+                      className="reject-btn"
+                    >
+                      ✗ Reject
+                    </button>
+                  </div>
+                )}
+                {request.status === 'approved' && <span className="approved-text">✓ Approved</span>}
+                {request.status === 'rejected' && <span className="rejected-text">✗ Rejected</span>}
+              </div>
+            </div>
+          ))}
+          
+          {leaveRequests.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">📅</div>
+              <h4>No Leave Requests</h4>
+              <p>There are no leave requests to display.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 const Dashboard = ({ user, organization, onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [dashboardStats, setDashboardStats] = useState(null);
