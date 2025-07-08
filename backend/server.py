@@ -637,6 +637,8 @@ async def create_leave_request(leave_data: LeaveRequestCreate, user_id: str, bac
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    user = fix_object_id(user)
+    
     # Calculate total days
     total_days = calculate_leave_days(leave_data.start_date, leave_data.end_date)
     
