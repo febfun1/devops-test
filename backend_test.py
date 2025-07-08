@@ -127,6 +127,97 @@ class TimeveraHRSystemTest(unittest.TestCase):
             
             logger.info(f"✅ Successfully logged in as {role}")
     
+    def test_05_secret_code_login(self):
+        """Test login using secret code instead of email"""
+        # Test invalid secret code login first
+        invalid_login = {
+            "secret_code": "nonexistentcode123",
+            "password": "WrongPassword"
+        }
+        
+        response = requests.post(f"{BACKEND_URL}/auth/login-secret", json=invalid_login)
+        self.assertEqual(response.status_code, 401, "Invalid secret code login should return 401")
+        
+        logger.info("✅ Invalid secret code login correctly rejected")
+        
+        # Test valid secret code login with each role
+        for role, user in self.__class__.test_users.items():
+            login_data = {
+                "secret_code": user["secret_code"],
+                "password": "Password123!"
+            }
+            
+            response = requests.post(f"{BACKEND_URL}/auth/login-secret", json=login_data)
+            self.assertEqual(response.status_code, 200, f"Failed to login as {role} with secret code: {response.text}")
+            
+            result = response.json()
+            self.assertIn("user", result, f"User data not returned for {role}")
+            self.assertEqual(result["user"]["email"], user["email"], f"Email mismatch for {role}")
+            self.assertEqual(result["user"]["role"], role, f"Role mismatch for {role}")
+            self.assertEqual(result["user"]["secret_code"], user["secret_code"], f"Secret code mismatch for {role}")
+            
+            # Verify ObjectId fields are properly serialized
+            self.assertIsInstance(result["user"]["_id"], str, "ObjectId not properly serialized to string")
+            
+            logger.info(f"✅ Successfully logged in as {role} using secret code")
+    
+    def test_06_get_secret_code(self):
+        """Test getting user's secret code"""
+        employee = self.__class__.test_users.get("employee")
+        if not employee:
+            self.skipTest("No employee user available")
+        
+        response = requests.get(f"{BACKEND_URL}/auth/get-secret-code/{employee['id']}")
+        self.assertEqual(response.status_code, 200, f"Failed to get secret code: {response.text}")
+        
+        result = response.json()
+        self.assertIn("secret_code", result, "Secret code not returned")
+        self.assertEqual(result["secret_code"], employee["secret_code"], "Secret code mismatch")
+        
+        logger.info(f"✅ Successfully retrieved secret code: {result['secret_code']}")
+    
+    def test_07_update_secret_code(self):
+        """Test updating user's secret code"""
+        employee = self.__class__.test_users.get("employee")
+        if not employee:
+            self.skipTest("No employee user available")
+        
+        # Update with auto-generated code
+        update_data = {
+            "current_secret_code": employee["secret_code"]
+        }
+        
+        response = requests.put(f"{BACKEND_URL}/auth/update-secret-code/{employee['id']}", json=update_data)
+        self.assertEqual(response.status_code, 200, f"Failed to update secret code: {response.text}")
+        
+        result = response.json()
+        self.assertIn("new_secret_code", result, "New secret code not returned")
+        self.assertNotEqual(result["new_secret_code"], employee["secret_code"], "Secret code should be different")
+        
+        # Update test user with new secret code
+        self.__class__.test_users["employee"]["secret_code"] = result["new_secret_code"]
+        
+        logger.info(f"✅ Successfully updated secret code to: {result['new_secret_code']}")
+        
+        # Update with custom code
+        new_code = f"custom_{random_string(12)}"
+        update_data = {
+            "current_secret_code": result["new_secret_code"],
+            "new_secret_code": new_code
+        }
+        
+        response = requests.put(f"{BACKEND_URL}/auth/update-secret-code/{employee['id']}", json=update_data)
+        self.assertEqual(response.status_code, 200, f"Failed to update secret code with custom value: {response.text}")
+        
+        result = response.json()
+        self.assertIn("new_secret_code", result, "New secret code not returned")
+        self.assertEqual(result["new_secret_code"], new_code, "Custom secret code not set correctly")
+        
+        # Update test user with new secret code
+        self.__class__.test_users["employee"]["secret_code"] = result["new_secret_code"]
+        
+        logger.info(f"✅ Successfully updated secret code to custom value: {result['new_secret_code']}")
+    
     def test_05_attendance_clock_in(self):
         """Test clock in functionality"""
         employee = self.__class__.test_users.get("employee")
