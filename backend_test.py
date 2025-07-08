@@ -218,7 +218,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info(f"✅ Successfully updated secret code to custom value: {result['new_secret_code']}")
     
-    def test_05_attendance_clock_in(self):
+    def test_08_attendance_clock_in(self):
         """Test clock in functionality"""
         employee = self.__class__.test_users.get("employee")
         if not employee:
