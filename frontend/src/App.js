@@ -5,6 +5,63 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Timevera Logo Component
+const TimeveraLogo = ({ size = 'medium', showText = true }) => {
+  const sizes = {
+    small: { width: '32px', height: '32px', fontSize: '0.875rem' },
+    medium: { width: '48px', height: '48px', fontSize: '1.125rem' },
+    large: { width: '64px', height: '64px', fontSize: '1.5rem' }
+  };
+
+  const currentSize = sizes[size];
+
+  return (
+    <div className="timevera-logo">
+      <div 
+        className="logo-circle"
+        style={{
+          width: currentSize.width,
+          height: currentSize.height,
+          background: 'linear-gradient(135deg, #2DD4BF 0%, #0F766E 100%)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          boxShadow: '0 4px 8px rgba(45, 212, 191, 0.3)'
+        }}
+      >
+        <svg 
+          width="60%" 
+          height="60%" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="white" 
+          strokeWidth="3"
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <polyline points="20,6 9,17 4,12"></polyline>
+        </svg>
+      </div>
+      {showText && (
+        <span 
+          className="logo-text"
+          style={{
+            marginLeft: '0.75rem',
+            fontWeight: '700',
+            fontSize: currentSize.fontSize,
+            color: '#0F766E',
+            fontFamily: '"Inter", sans-serif'
+          }}
+        >
+          Timevera
+        </span>
+      )}
+    </div>
+  );
+};
+
 // Auth Context
 const AuthContext = React.createContext();
 
@@ -14,8 +71,8 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('lexa_user');
-    const savedOrg = localStorage.getItem('lexa_organization');
+    const savedUser = localStorage.getItem('timevera_user');
+    const savedOrg = localStorage.getItem('timevera_organization');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
@@ -34,8 +91,8 @@ const AuthProvider = ({ children }) => {
       setUser(userData);
       setOrganization(orgData);
       
-      localStorage.setItem('lexa_user', JSON.stringify(userData));
-      localStorage.setItem('lexa_organization', JSON.stringify(orgData));
+      localStorage.setItem('timevera_user', JSON.stringify(userData));
+      localStorage.setItem('timevera_organization', JSON.stringify(orgData));
       
       return { success: true, user: userData, organization: orgData };
     } catch (error) {
@@ -48,7 +105,7 @@ const AuthProvider = ({ children }) => {
       const response = await axios.post(`${API}/auth/register`, userData);
       const user = response.data.user;
       setUser(user);
-      localStorage.setItem('lexa_user', JSON.stringify(user));
+      localStorage.setItem('timevera_user', JSON.stringify(user));
       return { success: true, user };
     } catch (error) {
       return { success: false, error: error.response?.data?.detail || 'Registration failed' };
@@ -58,8 +115,8 @@ const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setOrganization(null);
-    localStorage.removeItem('lexa_user');
-    localStorage.removeItem('lexa_organization');
+    localStorage.removeItem('timevera_user');
+    localStorage.removeItem('timevera_organization');
   };
 
   return (
@@ -115,7 +172,10 @@ const Login = ({ onLogin, switchToRegister }) => {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h2>Welcome to LEXA</h2>
+          <div className="auth-logo">
+            <TimeveraLogo size="large" />
+          </div>
+          <h2>Welcome to Timevera</h2>
           <p>Your comprehensive HR & Attendance solution</p>
         </div>
         
@@ -199,7 +259,10 @@ const Register = ({ onRegister, switchToLogin }) => {
     <div className="auth-container">
       <div className="auth-card register-card">
         <div className="auth-header">
-          <h2>Join LEXA</h2>
+          <div className="auth-logo">
+            <TimeveraLogo size="large" />
+          </div>
+          <h2>Join Timevera</h2>
           <p>Create your account to get started</p>
         </div>
         
