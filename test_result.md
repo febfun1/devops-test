@@ -291,6 +291,10 @@ test_plan:
     - "Authentication - User Login"
     - "Attendance - Clock Out"
     - "Attendance - Break Management"
+    - "Attendance - Current Status"
+    - "Attendance - History"
+    - "Dashboard - Statistics"
+    - "User Management - Company Users"
   stuck_tasks:
     - "Authentication - User Login"
     - "Attendance - Clock Out"
