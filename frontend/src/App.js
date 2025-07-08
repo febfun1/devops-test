@@ -5,61 +5,37 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Timevera Logo Component
-const TimeveraLogo = ({ size = 'medium', showText = true }) => {
-  const sizes = {
-    small: { width: '32px', height: '32px', fontSize: '0.875rem' },
-    medium: { width: '48px', height: '48px', fontSize: '1.125rem' },
-    large: { width: '64px', height: '64px', fontSize: '1.5rem' }
+// PWA Installation Hook
+const usePWAInstall = () => {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const installPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowInstallPrompt(false);
+      }
+      setDeferredPrompt(null);
+    }
   };
 
-  const currentSize = sizes[size];
-
-  return (
-    <div className="timevera-logo">
-      <div 
-        className="logo-circle"
-        style={{
-          width: currentSize.width,
-          height: currentSize.height,
-          background: 'linear-gradient(135deg, #2DD4BF 0%, #0F766E 100%)',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
-          boxShadow: '0 4px 8px rgba(45, 212, 191, 0.3)'
-        }}
-      >
-        <svg 
-          width="60%" 
-          height="60%" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="white" 
-          strokeWidth="3"
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-        >
-          <polyline points="20,6 9,17 4,12"></polyline>
-        </svg>
-      </div>
-      {showText && (
-        <span 
-          className="logo-text"
-          style={{
-            marginLeft: '0.75rem',
-            fontWeight: '700',
-            fontSize: currentSize.fontSize,
-            color: '#0F766E',
-            fontFamily: '"Inter", sans-serif'
-          }}
-        >
-          Timevera
-        </span>
-      )}
-    </div>
-  );
+  return { showInstallPrompt, installPWA };
 };
 
 // Auth Context
@@ -82,9 +58,12 @@ const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (emailOrCode, password) => {
     try {
-      const response = await axios.post(`${API}/auth/login`, { email, password });
+      const response = await axios.post(`${API}/auth/login`, { 
+        email_or_code: emailOrCode, 
+        password 
+      });
       const userData = response.data.user;
       const orgData = response.data.organization;
       
@@ -150,18 +129,306 @@ const LiveClock = () => {
   );
 };
 
-// Login Component
+// Mobile App Install Prompt
+const MobileAppPrompt = () => {
+  const { showInstallPrompt, installPWA } = usePWAInstall();
+
+  if (!showInstallPrompt) return null;
+
+  return (
+    <div className="mobile-app-prompt">
+      <div className="prompt-content">
+        <div className="prompt-icon">📱</div>
+        <div className="prompt-text">
+          <h4>Install Timevera App</h4>
+          <p>Get the full mobile experience</p>
+        </div>
+        <button onClick={installPWA} className="install-btn">
+          Install
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Manual Timesheet Component
+const ManualTimesheet = ({ user, organization }) => {
+  const [timesheets, setTimesheets] = useState([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [timesheetType, setTimesheetType] = useState('daily');
+  const [loading, setLoading] = useState(false);
+  
+  const [timesheetForm, setTimesheetForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    start_time: '09:00',
+    end_time: '17:00',
+    break_duration: '60',
+    project_name: '',
+    description: '',
+    hours_worked: 8
+  });
+
+  useEffect(() => {
+    loadTimesheets();
+  }, []);
+
+  const loadTimesheets = async () => {
+    try {
+      const response = await axios.get(`${API}/timesheets/user/${user.id}`);
+      setTimesheets(response.data);
+    } catch (error) {
+      console.error('Error loading timesheets:', error);
+    }
+  };
+
+  const calculateHours = () => {
+    const start = new Date(`2000-01-01 ${timesheetForm.start_time}`);
+    const end = new Date(`2000-01-01 ${timesheetForm.end_time}`);
+    const breakMinutes = parseInt(timesheetForm.break_duration);
+    
+    const diffMs = end - start;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const workHours = Math.max(0, diffHours - (breakMinutes / 60));
+    
+    setTimesheetForm({ ...timesheetForm, hours_worked: workHours.toFixed(2) });
+  };
+
+  useEffect(() => {
+    calculateHours();
+  }, [timesheetForm.start_time, timesheetForm.end_time, timesheetForm.break_duration]);
+
+  const submitTimesheet = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await axios.post(`${API}/timesheets/submit`, {
+        user_id: user.id,
+        organization_id: organization.id,
+        ...timesheetForm,
+        type: timesheetType,
+        status: 'pending'
+      });
+      alert('Timesheet submitted for approval');
+      setShowAddForm(false);
+      setTimesheetForm({
+        date: new Date().toISOString().split('T')[0],
+        start_time: '09:00',
+        end_time: '17:00',
+        break_duration: '60',
+        project_name: '',
+        description: '',
+        hours_worked: 8
+      });
+      loadTimesheets();
+    } catch (error) {
+      alert('Failed to submit timesheet');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="manual-timesheet">
+      <div className="timesheet-header">
+        <div>
+          <h3>Manual Timesheet</h3>
+          <p className="section-subtitle">Submit your work hours for approval</p>
+        </div>
+        <button 
+          onClick={() => setShowAddForm(true)}
+          className="add-timesheet-btn"
+        >
+          + Add Entry
+        </button>
+      </div>
+
+      <div className="timesheet-type-selector">
+        <label>Entry Type:</label>
+        <select value={timesheetType} onChange={(e) => setTimesheetType(e.target.value)}>
+          <option value="daily">Daily Entry</option>
+          <option value="weekly">Weekly Summary</option>
+        </select>
+      </div>
+
+      {showAddForm && (
+        <div className="modal-overlay">
+          <div className="modal large">
+            <h4>Add Timesheet Entry</h4>
+            <form onSubmit={submitTimesheet}>
+              <div className="form-group">
+                <label>Date *</label>
+                <input
+                  type="date"
+                  value={timesheetForm.date}
+                  onChange={(e) => setTimesheetForm({ ...timesheetForm, date: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Start Time *</label>
+                  <input
+                    type="time"
+                    value={timesheetForm.start_time}
+                    onChange={(e) => setTimesheetForm({ ...timesheetForm, start_time: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>End Time *</label>
+                  <input
+                    type="time"
+                    value={timesheetForm.end_time}
+                    onChange={(e) => setTimesheetForm({ ...timesheetForm, end_time: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Break Duration (minutes)</label>
+                  <input
+                    type="number"
+                    value={timesheetForm.break_duration}
+                    onChange={(e) => setTimesheetForm({ ...timesheetForm, break_duration: e.target.value })}
+                    min="0"
+                    max="300"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Total Hours</label>
+                  <input
+                    type="number"
+                    value={timesheetForm.hours_worked}
+                    readOnly
+                    className="readonly-field"
+                    step="0.25"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Project/Task Name</label>
+                <input
+                  type="text"
+                  value={timesheetForm.project_name}
+                  onChange={(e) => setTimesheetForm({ ...timesheetForm, project_name: e.target.value })}
+                  placeholder="Project or task worked on"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Work Description *</label>
+                <textarea
+                  value={timesheetForm.description}
+                  onChange={(e) => setTimesheetForm({ ...timesheetForm, description: e.target.value })}
+                  required
+                  rows="4"
+                  placeholder="Describe the work performed during this time..."
+                />
+              </div>
+
+              <div className="work-summary">
+                <h5>Summary</h5>
+                <div className="summary-grid">
+                  <div className="summary-item">
+                    <span>Total Hours:</span>
+                    <span>{timesheetForm.hours_worked}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span>Overtime:</span>
+                    <span>{timesheetForm.hours_worked > 8 ? (timesheetForm.hours_worked - 8).toFixed(2) : '0.00'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowAddForm(false)}>Cancel</button>
+                <button type="submit" disabled={loading}>
+                  {loading ? 'Submitting...' : 'Submit for Approval'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="timesheet-list">
+        <h4>Recent Submissions</h4>
+        <div className="timesheet-table">
+          <div className="table-header">
+            <div>Date</div>
+            <div>Hours</div>
+            <div>Project</div>
+            <div>Status</div>
+            <div>Actions</div>
+          </div>
+          
+          {timesheets.map((timesheet) => (
+            <div key={timesheet.id} className="table-row">
+              <div>{new Date(timesheet.date).toLocaleDateString()}</div>
+              <div>{timesheet.hours_worked}h</div>
+              <div>{timesheet.project_name || 'General'}</div>
+              <div>
+                <span className={`status-badge ${timesheet.status}`}>
+                  {timesheet.status}
+                </span>
+              </div>
+              <div>
+                {timesheet.status === 'pending' && (
+                  <button className="edit-timesheet-btn">Edit</button>
+                )}
+                <button className="view-timesheet-btn">View</button>
+              </div>
+            </div>
+          ))}
+          
+          {timesheets.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">📋</div>
+              <h4>No Timesheet Entries</h4>
+              <p>Submit your first timesheet entry to get started.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Employee Code Generator
+const generateEmployeeCode = () => {
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const numbers = '0123456789';
+  
+  let code = '';
+  // 2 letters + 4 numbers
+  for (let i = 0; i < 2; i++) {
+    code += letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+  for (let i = 0; i < 4; i++) {
+    code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  }
+  
+  return code;
+};
+
+// Login Component with Employee Code Support
 const Login = ({ onLogin, switchToRegister }) => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ emailOrCode: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loginType, setLoginType] = useState('email');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    const result = await onLogin(formData.email, formData.password);
+    const result = await onLogin(formData.emailOrCode, formData.password);
     if (!result.success) {
       setError(result.error);
     }
@@ -170,24 +437,43 @@ const Login = ({ onLogin, switchToRegister }) => {
 
   return (
     <div className="auth-container">
+      <MobileAppPrompt />
+      
       <div className="auth-card">
         <div className="auth-header">
-          <div className="auth-logo">
-            <TimeveraLogo size="large" />
-          </div>
-          <h2>Welcome to Timevera</h2>
-          <p>Your comprehensive HR & Attendance solution</p>
+          <h2>Sign In to Your Account</h2>
+          <p>Access your workplace dashboard</p>
+        </div>
+        
+        <div className="login-type-selector">
+          <button 
+            type="button"
+            className={loginType === 'email' ? 'active' : ''}
+            onClick={() => setLoginType('email')}
+          >
+            📧 Email
+          </button>
+          <button 
+            type="button"
+            className={loginType === 'code' ? 'active' : ''}
+            onClick={() => setLoginType('code')}
+          >
+            🔑 Employee Code
+          </button>
         </div>
         
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label>Email</label>
+            <label>
+              {loginType === 'email' ? 'Email Address' : 'Employee Code'}
+            </label>
             <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              type={loginType === 'email' ? 'email' : 'text'}
+              value={formData.emailOrCode}
+              onChange={(e) => setFormData({ ...formData, emailOrCode: e.target.value })}
               required
-              placeholder="Enter your email"
+              placeholder={loginType === 'email' ? 'Enter your email' : 'Enter your employee code (e.g., AB1234)'}
+              style={{ textTransform: loginType === 'code' ? 'uppercase' : 'none' }}
             />
           </div>
           
@@ -210,6 +496,12 @@ const Login = ({ onLogin, switchToRegister }) => {
         </form>
         
         <div className="auth-footer">
+          <div className="forgot-links">
+            <a href="#" className="forgot-link">Forgot password?</a>
+            {loginType === 'code' && (
+              <a href="#" className="forgot-link">Forgot employee code?</a>
+            )}
+          </div>
           <p>
             Don't have an account?{' '}
             <button onClick={switchToRegister} className="link-button">
