@@ -712,6 +712,529 @@ const LeaveManagement = ({ user, organization }) => {
     </div>
   );
 };
+// Employee Management Component
+const EmployeeManagement = ({ organization, user }) => {
+  const [employees, setEmployees] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterDepartment, setFilterDepartment] = useState('');
+
+  const [newEmployee, setNewEmployee] = useState({
+    email: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+    role: 'employee',
+    department: '',
+    position: '',
+    employee_id: '',
+    hourly_rate: '',
+    phone: '',
+    manager_id: ''
+  });
+
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    try {
+      const response = await axios.get(`${API}/employees/organization/${organization.id}`);
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+    }
+  };
+
+  const addEmployee = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const employeeData = {
+        ...newEmployee,
+        organization_id: organization.id,
+        hourly_rate: newEmployee.hourly_rate ? parseFloat(newEmployee.hourly_rate) : null
+      };
+      
+      await axios.post(`${API}/auth/register`, employeeData);
+      alert('Employee added successfully');
+      setShowAddModal(false);
+      setNewEmployee({
+        email: '', password: '', first_name: '', last_name: '', role: 'employee',
+        department: '', position: '', employee_id: '', hourly_rate: '', phone: '', manager_id: ''
+      });
+      loadEmployees();
+    } catch (error) {
+      alert(error.response?.data?.detail || 'Failed to add employee');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const editEmployee = (employee) => {
+    setEditingEmployee(employee);
+    setShowEditModal(true);
+  };
+
+  const updateEmployee = async (employeeData) => {
+    setLoading(true);
+    try {
+      await axios.put(`${API}/employees/${editingEmployee.id}`, employeeData);
+      alert('Employee updated successfully');
+      setShowEditModal(false);
+      setEditingEmployee(null);
+      loadEmployees();
+    } catch (error) {
+      alert('Failed to update employee');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deactivateEmployee = async (employeeId) => {
+    if (window.confirm('Are you sure you want to deactivate this employee?')) {
+      try {
+        await axios.delete(`${API}/employees/${employeeId}`);
+        alert('Employee deactivated successfully');
+        loadEmployees();
+      } catch (error) {
+        alert('Failed to deactivate employee');
+      }
+    }
+  };
+
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         emp.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = !filterDepartment || emp.department === filterDepartment;
+    return matchesSearch && matchesDepartment;
+  });
+
+  const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+
+  return (
+    <div className="employee-management">
+      <div className="employee-header">
+        <div>
+          <h3>Employee Management</h3>
+          <p className="section-subtitle">Manage your organization's workforce</p>
+        </div>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="add-employee-btn"
+        >
+          + Add Employee
+        </button>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="employee-filters">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search employees..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+        <div className="filter-box">
+          <select
+            value={filterDepartment}
+            onChange={(e) => setFilterDepartment(e.target.value)}
+            className="filter-select"
+          >
+            <option value="">All Departments</option>
+            {departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Employee Stats */}
+      <div className="employee-stats">
+        <div className="stat-item">
+          <span className="stat-number">{employees.length}</span>
+          <span className="stat-label">Total Employees</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">{employees.filter(e => e.is_active).length}</span>
+          <span className="stat-label">Active</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-number">{departments.length}</span>
+          <span className="stat-label">Departments</span>
+        </div>
+      </div>
+      
+      <div className="employees-grid">
+        {filteredEmployees.map((employee) => (
+          <div key={employee.id} className="employee-card">
+            <div className="employee-header">
+              {employee.avatar_base64 ? (
+                <img src={employee.avatar_base64} alt="Avatar" className="employee-avatar" />
+              ) : (
+                <div className="employee-avatar-placeholder">
+                  {employee.first_name[0]}{employee.last_name[0]}
+                </div>
+              )}
+              <div className="employee-info">
+                <h4>{employee.first_name} {employee.last_name}</h4>
+                <p>{employee.position} • {employee.department}</p>
+                <p className="employee-id">ID: {employee.employee_id || 'Not Set'}</p>
+              </div>
+              <div className={`employee-status ${employee.is_active ? 'active' : 'inactive'}`}>
+                {employee.is_active ? '🟢' : '🔴'}
+              </div>
+            </div>
+            
+            <div className="employee-details">
+              <div className="detail-item">
+                <span>Email:</span> {employee.email}
+              </div>
+              <div className="detail-item">
+                <span>Phone:</span> {employee.phone || 'N/A'}
+              </div>
+              <div className="detail-item">
+                <span>Role:</span> {employee.role}
+              </div>
+              <div className="detail-item">
+                <span>Hourly Rate:</span> ${employee.hourly_rate || 'N/A'}
+              </div>
+              <div className="detail-item">
+                <span>Manager:</span> {employee.manager_name || 'N/A'}
+              </div>
+              <div className="detail-item">
+                <span>Hire Date:</span> {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString() : 'N/A'}
+              </div>
+            </div>
+            
+            <div className="employee-actions">
+              <button onClick={() => editEmployee(employee)} className="edit-btn">
+                ✏️ Edit
+              </button>
+              <button 
+                onClick={() => deactivateEmployee(employee.id)} 
+                className="deactivate-btn"
+              >
+                🚫 Deactivate
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredEmployees.length === 0 && (
+        <div className="empty-state">
+          <div className="empty-icon">👥</div>
+          <h4>No Employees Found</h4>
+          <p>No employees match your current search criteria.</p>
+        </div>
+      )}
+
+      {/* Add Employee Modal */}
+      {showAddModal && (
+        <div className="modal-overlay">
+          <div className="modal large">
+            <h4>Add New Employee</h4>
+            <form onSubmit={addEmployee}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>First Name *</label>
+                  <input
+                    type="text"
+                    value={newEmployee.first_name}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, first_name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Last Name *</label>
+                  <input
+                    type="text"
+                    value={newEmployee.last_name}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, last_name: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Email *</label>
+                  <input
+                    type="email"
+                    value={newEmployee.email}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Password *</label>
+                  <input
+                    type="password"
+                    value={newEmployee.password}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Role</label>
+                  <select
+                    value={newEmployee.role}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
+                  >
+                    <option value="employee">Employee</option>
+                    <option value="manager">Manager</option>
+                    <option value="hr">HR</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Employee ID</label>
+                  <input
+                    type="text"
+                    value={newEmployee.employee_id}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, employee_id: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Department</label>
+                  <input
+                    type="text"
+                    value={newEmployee.department}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, department: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Position</label>
+                  <input
+                    type="text"
+                    value={newEmployee.position}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Hourly Rate</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newEmployee.hourly_rate}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, hourly_rate: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Phone</label>
+                  <input
+                    type="tel"
+                    value={newEmployee.phone}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label>Manager</label>
+                <select
+                  value={newEmployee.manager_id}
+                  onChange={(e) => setNewEmployee({ ...newEmployee, manager_id: e.target.value })}
+                >
+                  <option value="">No Manager</option>
+                  {employees
+                    .filter(emp => emp.role === 'manager' || emp.role === 'admin')
+                    .map(manager => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.first_name} {manager.last_name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" disabled={loading}>
+                  {loading ? 'Adding...' : 'Add Employee'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Employee Modal */}
+      {showEditModal && editingEmployee && (
+        <EmployeeEditModal
+          employee={editingEmployee}
+          onUpdate={updateEmployee}
+          onClose={() => setShowEditModal(false)}
+          loading={loading}
+          employees={employees}
+        />
+      )}
+    </div>
+  );
+};
+
+// Employee Edit Modal Component
+const EmployeeEditModal = ({ employee, onUpdate, onClose, loading, employees }) => {
+  const [formData, setFormData] = useState({
+    first_name: employee.first_name,
+    last_name: employee.last_name,
+    department: employee.department || '',
+    position: employee.position || '',
+    employee_id: employee.employee_id || '',
+    hourly_rate: employee.hourly_rate || '',
+    phone: employee.phone || '',
+    address: employee.address || '',
+    emergency_contact: employee.emergency_contact || '',
+    manager_id: employee.manager_id || ''
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const updateData = {
+      ...formData,
+      hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null
+    };
+    onUpdate(updateData);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal large">
+        <h4>Edit Employee</h4>
+        <form onSubmit={handleSubmit}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>First Name</label>
+              <input
+                type="text"
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Last Name</label>
+              <input
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+          
+          <div className="form-row">
+            <div className="form-group">
+              <label>Department</label>
+              <input
+                type="text"
+                value={formData.department}
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Position</label>
+              <input
+                type="text"
+                value={formData.position}
+                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <div className="form-row">
+            <div className="form-group">
+              <label>Employee ID</label>
+              <input
+                type="text"
+                value={formData.employee_id}
+                onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>Hourly Rate</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.hourly_rate}
+                onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <div className="form-group">
+            <label>Manager</label>
+            <select
+              value={formData.manager_id}
+              onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
+            >
+              <option value="">No Manager</option>
+              {employees
+                .filter(emp => emp.id !== employee.id && (emp.role === 'manager' || emp.role === 'admin'))
+                .map(manager => (
+                  <option key={manager.id} value={manager.id}>
+                    {manager.first_name} {manager.last_name}
+                  </option>
+                ))}
+            </select>
+          </div>
+          
+          <div className="form-group">
+            <label>Phone</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Address</label>
+            <textarea
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              rows="3"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Emergency Contact</label>
+            <input
+              type="text"
+              value={formData.emergency_contact}
+              onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
+            />
+          </div>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose}>Cancel</button>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Employee'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Dashboard Component
 const Dashboard = ({ user, organization, onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [dashboardStats, setDashboardStats] = useState(null);
