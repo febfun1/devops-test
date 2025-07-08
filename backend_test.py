@@ -354,7 +354,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info(f"✅ Successfully retrieved company attendance with {len(attendance)} records")
     
-    def test_11_get_dashboard_stats(self):
+    def test_14_get_dashboard_stats(self):
         """Test getting dashboard statistics"""
         employee = self.__class__.test_users.get("employee")
         if not employee:
@@ -369,7 +369,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info(f"✅ Successfully retrieved dashboard statistics")
     
-    def test_12_get_company_users(self):
+    def test_15_get_company_users(self):
         """Test getting company users"""
         if not self.__class__.company_id:
             self.skipTest("No company ID available")
