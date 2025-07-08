@@ -58,12 +58,24 @@ const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (emailOrCode, password) => {
+  const login = async (emailOrCode, password, loginType = 'email') => {
     try {
-      const response = await axios.post(`${API}/auth/login`, { 
-        email_or_code: emailOrCode, 
-        password 
-      });
+      let response;
+      
+      if (loginType === 'code' || (!emailOrCode.includes('@') && emailOrCode.length < 20)) {
+        // Use secret code login endpoint
+        response = await axios.post(`${API}/auth/login-secret`, { 
+          secret_code: emailOrCode, 
+          password 
+        });
+      } else {
+        // Use email login endpoint
+        response = await axios.post(`${API}/auth/login`, { 
+          email: emailOrCode, 
+          password 
+        });
+      }
+      
       const userData = response.data.user;
       const orgData = response.data.organization;
       
