@@ -680,7 +680,424 @@ const Register = ({ onRegister, switchToLogin }) => {
   );
 };
 
-// Notifications Component
+// Organization Configuration Component
+const WorkforceConfiguration = ({ organization, onUpdate }) => {
+  const [config, setConfig] = useState({
+    tracking_method: organization?.tracking_method || 'attendance_only',
+    payment_structure: organization?.payment_structure || 'monthly_salary',
+    ussd_enabled: organization?.ussd_enabled || false,
+    ussd_code: organization?.ussd_code || '',
+    regional_settings: organization?.regional_settings || 'africa',
+    require_timesheets: organization?.require_timesheets || false,
+    clock_in_required: organization?.clock_in_required || true,
+    overtime_calculation: organization?.overtime_calculation || 'disabled'
+  });
+  
+  const [loading, setLoading] = useState(false);
+  const [showUSSDSetup, setShowUSSDSetup] = useState(false);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      await axios.put(`${API}/organizations/${organization.id}/workforce-config`, config);
+      alert('Workforce configuration updated successfully');
+      onUpdate();
+    } catch (error) {
+      alert('Failed to update configuration');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateUSSDCode = () => {
+    const code = `*${Math.floor(Math.random() * 900) + 100}*${Math.floor(Math.random() * 90) + 10}#`;
+    setConfig({ ...config, ussd_code: code });
+  };
+
+  return (
+    <div className="workforce-configuration">
+      <div className="config-header">
+        <h3>Workforce Configuration</h3>
+        <p className="section-subtitle">Customize Timevera to match your regional and business practices</p>
+      </div>
+
+      <div className="config-sections">
+        {/* Regional Settings */}
+        <div className="config-section">
+          <h4>🌍 Regional Business Practices</h4>
+          <div className="form-group">
+            <label>Primary Business Region</label>
+            <select 
+              value={config.regional_settings}
+              onChange={(e) => setConfig({ ...config, regional_settings: e.target.value })}
+            >
+              <option value="africa">🌍 Africa (Monthly salary focus)</option>
+              <option value="north_america">🇺🇸 North America (Hourly wages common)</option>
+              <option value="europe">🇪🇺 Europe (Mixed payment structures)</option>
+              <option value="asia_pacific">🌏 Asia Pacific (Varied practices)</option>
+              <option value="custom">⚙️ Custom Configuration</option>
+            </select>
+            <div className="field-hint">
+              This helps optimize Timevera for your local business practices
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Structure */}
+        <div className="config-section">
+          <h4>💰 Payment Structure</h4>
+          <div className="payment-options">
+            <label className="radio-option">
+              <input 
+                type="radio" 
+                name="payment_structure"
+                value="monthly_salary"
+                checked={config.payment_structure === 'monthly_salary'}
+                onChange={(e) => setConfig({ ...config, payment_structure: e.target.value })}
+              />
+              <div className="option-content">
+                <strong>Monthly Salary</strong>
+                <p>Fixed monthly payment, attendance for presence tracking</p>
+                <span className="region-tag">Popular in Africa</span>
+              </div>
+            </label>
+            
+            <label className="radio-option">
+              <input 
+                type="radio" 
+                name="payment_structure"
+                value="hourly_wages"
+                checked={config.payment_structure === 'hourly_wages'}
+                onChange={(e) => setConfig({ ...config, payment_structure: e.target.value })}
+              />
+              <div className="option-content">
+                <strong>Hourly Wages</strong>
+                <p>Payment based on actual hours worked</p>
+                <span className="region-tag">Common in Western countries</span>
+              </div>
+            </label>
+            
+            <label className="radio-option">
+              <input 
+                type="radio" 
+                name="payment_structure"
+                value="mixed"
+                checked={config.payment_structure === 'mixed'}
+                onChange={(e) => setConfig({ ...config, payment_structure: e.target.value })}
+              />
+              <div className="option-content">
+                <strong>Mixed Structure</strong>
+                <p>Some employees salary, others hourly</p>
+                <span className="region-tag">Flexible approach</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Time Tracking Method */}
+        <div className="config-section">
+          <h4>⏰ Time Tracking Method</h4>
+          <div className="tracking-options">
+            <label className="checkbox-option">
+              <input 
+                type="checkbox"
+                checked={config.clock_in_required}
+                onChange={(e) => setConfig({ ...config, clock_in_required: e.target.checked })}
+              />
+              <div className="option-content">
+                <strong>Clock In/Out System</strong>
+                <p>Real-time attendance tracking with timestamps</p>
+              </div>
+            </label>
+            
+            <label className="checkbox-option">
+              <input 
+                type="checkbox"
+                checked={config.require_timesheets}
+                onChange={(e) => setConfig({ ...config, require_timesheets: e.target.checked })}
+              />
+              <div className="option-content">
+                <strong>Manual Timesheets</strong>
+                <p>Employees submit detailed work hours for approval</p>
+              </div>
+            </label>
+          </div>
+          
+          <div className="form-group">
+            <label>Primary Tracking Method</label>
+            <select 
+              value={config.tracking_method}
+              onChange={(e) => setConfig({ ...config, tracking_method: e.target.value })}
+            >
+              <option value="attendance_only">📋 Attendance Only (Presence tracking)</option>
+              <option value="time_based">⏱️ Time-based (Detailed hour tracking)</option>
+              <option value="project_based">📊 Project-based (Task and time tracking)</option>
+              <option value="flexible">🔄 Flexible (Employee choice)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* USSD Integration */}
+        <div className="config-section">
+          <h4>📱 USSD Clock-in (Mobile Accessibility)</h4>
+          <div className="ussd-section">
+            <label className="checkbox-option">
+              <input 
+                type="checkbox"
+                checked={config.ussd_enabled}
+                onChange={(e) => setConfig({ ...config, ussd_enabled: e.target.checked })}
+              />
+              <div className="option-content">
+                <strong>Enable USSD Clock-in</strong>
+                <p>Allow employees to clock in using basic phones via USSD codes</p>
+                <div className="ussd-benefits">
+                  <span className="benefit">✅ Works on any phone</span>
+                  <span className="benefit">✅ Perfect for construction sites</span>
+                  <span className="benefit">✅ No internet required</span>
+                  <span className="benefit">✅ Inclusive for all workers</span>
+                </div>
+              </div>
+            </label>
+            
+            {config.ussd_enabled && (
+              <div className="ussd-setup">
+                <div className="form-group">
+                  <label>USSD Code for your organization</label>
+                  <div className="ussd-code-input">
+                    <input 
+                      type="text"
+                      value={config.ussd_code}
+                      onChange={(e) => setConfig({ ...config, ussd_code: e.target.value })}
+                      placeholder="*123*45#"
+                      className="ussd-input"
+                    />
+                    <button 
+                      type="button"
+                      onClick={generateUSSDCode}
+                      className="generate-code-btn"
+                    >
+                      Generate Code
+                    </button>
+                  </div>
+                  <div className="field-hint">
+                    Employees will dial this code to clock in/out from any mobile phone
+                  </div>
+                </div>
+                
+                <div className="ussd-preview">
+                  <h5>📱 How it works for employees:</h5>
+                  <div className="ussd-steps">
+                    <div className="ussd-step">
+                      <span className="step-number">1</span>
+                      <span>Dial: <code>{config.ussd_code || '*123*45#'}</code></span>
+                    </div>
+                    <div className="ussd-step">
+                      <span className="step-number">2</span>
+                      <span>Enter Employee Code: <code>AB1234</code></span>
+                    </div>
+                    <div className="ussd-step">
+                      <span className="step-number">3</span>
+                      <span>Select: 1=Clock In, 2=Clock Out, 3=Break</span>
+                    </div>
+                    <div className="ussd-step">
+                      <span className="step-number">4</span>
+                      <span>Receive confirmation SMS</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => setShowUSSDSetup(true)}
+                  className="setup-ussd-btn"
+                >
+                  🔧 Configure USSD Settings
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Overtime Configuration */}
+        <div className="config-section">
+          <h4>⚡ Overtime & Compliance</h4>
+          <div className="form-group">
+            <label>Overtime Calculation</label>
+            <select 
+              value={config.overtime_calculation}
+              onChange={(e) => setConfig({ ...config, overtime_calculation: e.target.value })}
+            >
+              <option value="disabled">❌ Disabled (Salary-based organizations)</option>
+              <option value="daily">📅 Daily (Over 8 hours/day)</option>
+              <option value="weekly">📊 Weekly (Over 40 hours/week)</option>
+              <option value="monthly">📈 Monthly (Over standard hours)</option>
+              <option value="custom">⚙️ Custom Rules</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Cultural Adaptations */}
+        <div className="config-section">
+          <h4>🎭 Cultural Adaptations</h4>
+          <div className="cultural-settings">
+            <label className="checkbox-option">
+              <input type="checkbox" defaultChecked />
+              <div className="option-content">
+                <strong>Friday Prayer Time (Muslim regions)</strong>
+                <p>Automatic break scheduling for religious observance</p>
+              </div>
+            </label>
+            
+            <label className="checkbox-option">
+              <input type="checkbox" defaultChecked />
+              <div className="option-content">
+                <strong>Local Holiday Calendar</strong>
+                <p>Integrate regional and religious holidays</p>
+              </div>
+            </label>
+            
+            <label className="checkbox-option">
+              <input type="checkbox" />
+              <div className="option-content">
+                <strong>Ramadan Work Hours</strong>
+                <p>Adjusted schedules during fasting periods</p>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="config-actions">
+        <button onClick={handleSave} disabled={loading} className="save-config-btn">
+          {loading ? '⏳ Saving...' : '💾 Save Configuration'}
+        </button>
+      </div>
+
+      {/* USSD Setup Modal */}
+      {showUSSDSetup && (
+        <USSDSetupModal 
+          config={config}
+          onClose={() => setShowUSSDSetup(false)}
+          onSave={(ussdConfig) => {
+            setConfig({ ...config, ...ussdConfig });
+            setShowUSSDSetup(false);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// USSD Setup Modal
+const USSDSetupModal = ({ config, onClose, onSave }) => {
+  const [ussdConfig, setUssdConfig] = useState({
+    provider: 'africell',
+    shortcode: config.ussd_code || '',
+    sms_notifications: true,
+    supported_languages: ['english', 'french', 'swahili'],
+    pricing_model: 'free'
+  });
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal large">
+        <h4>🔧 USSD Integration Setup</h4>
+        
+        <div className="ussd-config-form">
+          <div className="form-group">
+            <label>Mobile Network Provider</label>
+            <select 
+              value={ussdConfig.provider}
+              onChange={(e) => setUssdConfig({ ...ussdConfig, provider: e.target.value })}
+            >
+              <option value="africell">Africell</option>
+              <option value="mtn">MTN</option>
+              <option value="orange">Orange</option>
+              <option value="vodacom">Vodacom</option>
+              <option value="airtel">Airtel</option>
+              <option value="multi_provider">Multiple Providers</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>USSD Short Code</label>
+            <input 
+              type="text"
+              value={ussdConfig.shortcode}
+              onChange={(e) => setUssdConfig({ ...ussdConfig, shortcode: e.target.value })}
+              placeholder="*123*45#"
+            />
+            <div className="field-hint">
+              Contact your mobile provider to register this short code
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Supported Languages</label>
+            <div className="language-checkboxes">
+              {['english', 'french', 'swahili', 'arabic', 'portuguese'].map(lang => (
+                <label key={lang} className="checkbox-option small">
+                  <input 
+                    type="checkbox"
+                    checked={ussdConfig.supported_languages.includes(lang)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setUssdConfig({
+                          ...ussdConfig,
+                          supported_languages: [...ussdConfig.supported_languages, lang]
+                        });
+                      } else {
+                        setUssdConfig({
+                          ...ussdConfig,
+                          supported_languages: ussdConfig.supported_languages.filter(l => l !== lang)
+                        });
+                      }
+                    }}
+                  />
+                  <span className="capitalize">{lang}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="ussd-testing">
+            <h5>📱 Test USSD Integration</h5>
+            <p>Before going live, test the USSD flow:</p>
+            <div className="test-steps">
+              <button className="test-btn">1. Test Connection</button>
+              <button className="test-btn">2. Test Clock In</button>
+              <button className="test-btn">3. Test SMS Response</button>
+            </div>
+          </div>
+
+          <div className="pricing-info">
+            <h5>💰 USSD Pricing</h5>
+            <div className="pricing-tiers">
+              <div className="pricing-tier">
+                <strong>Basic (Free)</strong>
+                <p>Up to 100 USSD transactions/month</p>
+              </div>
+              <div className="pricing-tier">
+                <strong>Standard ($10/month)</strong>
+                <p>Up to 1,000 transactions/month</p>
+              </div>
+              <div className="pricing-tier">
+                <strong>Enterprise ($25/month)</strong>
+                <p>Unlimited transactions + priority support</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button onClick={onClose}>Cancel</button>
+          <button onClick={() => onSave(ussdConfig)} className="save-btn">
+            Save USSD Configuration
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 const NotificationCenter = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
