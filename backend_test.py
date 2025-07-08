@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Get the backend URL from the frontend .env file
-BACKEND_URL = "https://4c4f2531-fb39-45f2-9df8-884ece82869f.preview.emergentagent.com/api"
+BACKEND_URL = "https://5af70354-1dd9-4a4f-b27d-5ab45dcf077f.preview.emergentagent.com/api"
 
 def random_string(length=8):
     """Generate a random string for test data"""
