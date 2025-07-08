@@ -924,6 +924,8 @@ async def attendance_action(action_data: AttendanceAction):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    user = fix_object_id(user)
+    
     # Get today's attendance record
     attendance = await db.attendance.find_one({
         "user_id": action_data.user_id,
