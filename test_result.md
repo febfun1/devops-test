@@ -218,15 +218,18 @@ backend:
 
   - task: "Attendance - History"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "medium"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "Getting attendance history has issues with MongoDB ObjectId serialization. Results in 500 Internal Server Error."
+      - working: true
+        agent: "testing"
+        comment: "The attendance history endpoint is now working correctly. The ObjectId serialization issues have been fixed, and the endpoint returns the correct history records."
 
   - task: "Attendance - Company Overview"
     implemented: true
