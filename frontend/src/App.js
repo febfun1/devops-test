@@ -5,6 +5,53 @@ import axios from 'axios';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Timevera Logo Component
+const TimeveraLogo = ({ size = "medium", showText = true }) => {
+  const sizes = {
+    small: { circle: 24, text: "1rem" },
+    medium: { circle: 32, text: "1.25rem" },
+    large: { circle: 48, text: "1.75rem" }
+  };
+
+  const currentSize = sizes[size] || sizes.medium;
+
+  return (
+    <div className="timevera-logo">
+      <div 
+        className="logo-circle"
+        style={{
+          width: currentSize.circle,
+          height: currentSize.circle,
+          background: 'linear-gradient(135deg, #4F46E5 0%, #F59E0B 100%)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: showText ? '0.5rem' : '0'
+        }}
+      >
+        <span style={{ color: 'white', fontWeight: 'bold', fontSize: currentSize.circle * 0.4 }}>
+          T
+        </span>
+      </div>
+      {showText && (
+        <span 
+          style={{ 
+            fontSize: currentSize.text, 
+            fontWeight: 'bold',
+            background: 'linear-gradient(135deg, #4F46E5, #F59E0B)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}
+        >
+          Timevera
+        </span>
+      )}
+    </div>
+  );
+};
+
 // PWA Installation Hook
 const usePWAInstall = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
