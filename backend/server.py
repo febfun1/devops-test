@@ -1085,6 +1085,7 @@ async def get_dashboard_stats(user_id: str):
     
     # Get leave balances
     user = await db.users.find_one({"id": user_id})
+    user = fix_object_id(user) if user else None
     leave_balances = user.get("leave_balances", {}) if user else {}
     
     # Get pending leave requests
