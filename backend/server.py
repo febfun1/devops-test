@@ -945,7 +945,7 @@ async def attendance_action(action_data: AttendanceAction):
         )
         attendance_dict = attendance.dict()
     else:
-        attendance_dict = attendance
+        attendance_dict = fix_object_id(attendance)
     
     # Handle different actions
     if action_data.action == "clock_in":
