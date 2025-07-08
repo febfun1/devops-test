@@ -366,8 +366,6 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Employee Secret Code Authentication"
-    - "All Previous Endpoints Still Working"
     - "Employee Secret Code Login Frontend"
     - "Profile Management Component"
   stuck_tasks: []
