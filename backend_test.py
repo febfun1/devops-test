@@ -250,7 +250,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info("✅ Duplicate clock in correctly rejected")
     
-    def test_06_attendance_break(self):
+    def test_09_attendance_break(self):
         """Test break start/end functionality"""
         employee = self.__class__.test_users.get("employee")
         if not employee or not self.__class__.current_attendance:
