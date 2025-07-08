@@ -18,8 +18,8 @@ def random_string(length=8):
     """Generate a random string for test data"""
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
-class LexaHRSystemTest(unittest.TestCase):
-    """Test suite for LEXA HR/Payroll/Attendance System"""
+class TimeveraHRSystemTest(unittest.TestCase):
+    """Test suite for Timevera HR/Payroll/Attendance System"""
     
     @classmethod
     def setUpClass(cls):
