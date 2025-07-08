@@ -1234,7 +1234,723 @@ const EmployeeEditModal = ({ employee, onUpdate, onClose, loading, employees }) 
   );
 };
 
-// Dashboard Component
+// Analytics Dashboard Component
+const AnalyticsDashboard = ({ organization }) => {
+  const [analytics, setAnalytics] = useState({});
+  const [selectedMetric, setSelectedMetric] = useState('attendance');
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [selectedMetric, dateRange]);
+
+  const loadAnalytics = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/analytics/organization/${organization.id}`, {
+        organization_id: organization.id,
+        start_date: new Date(dateRange.start).toISOString(),
+        end_date: new Date(dateRange.end).toISOString(),
+        metric_type: selectedMetric
+      });
+      setAnalytics(response.data);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportData = async () => {
+    setExportLoading(true);
+    try {
+      const response = await axios.get(
+        `${API}/export/attendance/${organization.id}?start_date=${dateRange.start}&end_date=${dateRange.end}`,
+        { responseType: 'blob' }
+      );
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timevera_${selectedMetric}_export_${dateRange.start}_${dateRange.end}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Failed to export data');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const generateReport = async () => {
+    try {
+      const reportData = {
+        organization: organization.name,
+        period: `${dateRange.start} to ${dateRange.end}`,
+        metrics: analytics,
+        generated_at: new Date().toISOString()
+      };
+      
+      const dataStr = JSON.stringify(reportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = window.URL.createObjectURL(dataBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timevera_analytics_report_${Date.now()}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Failed to generate report');
+    }
+  };
+
+  return (
+    <div className="analytics-dashboard">
+      <div className="analytics-header">
+        <div>
+          <h3>Analytics & Insights</h3>
+          <p className="section-subtitle">Comprehensive business intelligence and reporting</p>
+        </div>
+        <div className="analytics-actions">
+          <button onClick={generateReport} className="report-btn">
+            📊 Generate Report
+          </button>
+          <button 
+            onClick={exportData} 
+            disabled={exportLoading}
+            className="export-btn"
+          >
+            {exportLoading ? '⏳ Exporting...' : '📤 Export Data'}
+          </button>
+        </div>
+      </div>
+      
+      <div className="analytics-controls">
+        <div className="metric-selector">
+          <label>Analysis Type:</label>
+          <select
+            value={selectedMetric}
+            onChange={(e) => setSelectedMetric(e.target.value)}
+          >
+            <option value="attendance">📅 Attendance Analysis</option>
+            <option value="payroll">💰 Payroll Analysis</option>
+            <option value="leaves">🏖️ Leave Analysis</option>
+            <option value="performance">📈 Performance Metrics</option>
+          </select>
+        </div>
+        
+        <div className="date-range">
+          <label>From:</label>
+          <input
+            type="date"
+            value={dateRange.start}
+            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+          />
+          <label>To:</label>
+          <input
+            type="date"
+            value={dateRange.end}
+            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="analytics-loading">
+          <div className="loading-spinner"></div>
+          <p>Analyzing data...</p>
+        </div>
+      ) : (
+        <div className="analytics-content">
+          {selectedMetric === 'attendance' && analytics.metric_type === 'attendance' && (
+            <div className="analytics-section">
+              <h4>📊 Attendance Analytics</h4>
+              <div className="analytics-grid">
+                <div className="analytics-card primary">
+                  <div className="card-icon">⏰</div>
+                  <div className="card-content">
+                    <h4>Total Hours</h4>
+                    <div className="analytics-value">{analytics.total_hours?.toFixed(1) || 0}h</div>
+                    <div className="analytics-trend">+12% from last period</div>
+                  </div>
+                </div>
+                <div className="analytics-card secondary">
+                  <div className="card-icon">📈</div>
+                  <div className="card-content">
+                    <h4>Overtime Hours</h4>
+                    <div className="analytics-value">{analytics.total_overtime?.toFixed(1) || 0}h</div>
+                    <div className="analytics-trend">-5% from last period</div>
+                  </div>
+                </div>
+                <div className="analytics-card success">
+                  <div className="card-icon">👥</div>
+                  <div className="card-content">
+                    <h4>Active Employees</h4>
+                    <div className="analytics-value">{analytics.unique_employees || 0}</div>
+                    <div className="analytics-trend">+2 new hires</div>
+                  </div>
+                </div>
+                <div className="analytics-card info">
+                  <div className="card-icon">📊</div>
+                  <div className="card-content">
+                    <h4>Avg Hours/Employee</h4>
+                    <div className="analytics-value">{analytics.average_hours_per_employee?.toFixed(1) || 0}h</div>
+                    <div className="analytics-trend">Industry standard: 40h</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="productivity-insights">
+                <h5>🎯 Productivity Insights</h5>
+                <div className="insights-grid">
+                  <div className="insight-item">
+                    <span className="insight-label">Peak Productivity Hours:</span>
+                    <span className="insight-value">9:00 AM - 11:00 AM</span>
+                  </div>
+                  <div className="insight-item">
+                    <span className="insight-label">Average Late Arrivals:</span>
+                    <span className="insight-value">3.2 per week</span>
+                  </div>
+                  <div className="insight-item">
+                    <span className="insight-label">Attendance Rate:</span>
+                    <span className="insight-value">94.5%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {selectedMetric === 'payroll' && analytics.metric_type === 'payroll' && (
+            <div className="analytics-section">
+              <h4>💰 Payroll Analytics</h4>
+              <div className="analytics-grid">
+                <div className="analytics-card primary">
+                  <div className="card-icon">💵</div>
+                  <div className="card-content">
+                    <h4>Total Gross Pay</h4>
+                    <div className="analytics-value">${analytics.total_gross_pay?.toFixed(2) || 0}</div>
+                    <div className="analytics-trend">+8% from last period</div>
+                  </div>
+                </div>
+                <div className="analytics-card secondary">
+                  <div className="card-icon">💰</div>
+                  <div className="card-content">
+                    <h4>Total Net Pay</h4>
+                    <div className="analytics-value">${analytics.total_net_pay?.toFixed(2) || 0}</div>
+                    <div className="analytics-trend">+7% from last period</div>
+                  </div>
+                </div>
+                <div className="analytics-card warning">
+                  <div className="card-icon">📉</div>
+                  <div className="card-content">
+                    <h4>Total Deductions</h4>
+                    <div className="analytics-value">${analytics.total_deductions?.toFixed(2) || 0}</div>
+                    <div className="analytics-trend">Tax: 68%, Benefits: 32%</div>
+                  </div>
+                </div>
+                <div className="analytics-card info">
+                  <div className="card-icon">📊</div>
+                  <div className="card-content">
+                    <h4>Payroll Count</h4>
+                    <div className="analytics-value">{analytics.number_of_payrolls || 0}</div>
+                    <div className="analytics-trend">Processed this period</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {selectedMetric === 'leaves' && analytics.metric_type === 'leaves' && (
+            <div className="analytics-section">
+              <h4>🏖️ Leave Analytics</h4>
+              <div className="analytics-grid">
+                <div className="analytics-card primary">
+                  <div className="card-icon">📝</div>
+                  <div className="card-content">
+                    <h4>Total Requests</h4>
+                    <div className="analytics-value">{analytics.total_requests || 0}</div>
+                    <div className="analytics-trend">This period</div>
+                  </div>
+                </div>
+                <div className="analytics-card success">
+                  <div className="card-icon">✅</div>
+                  <div className="card-content">
+                    <h4>Approved</h4>
+                    <div className="analytics-value">{analytics.approved_requests || 0}</div>
+                    <div className="analytics-trend">{analytics.approval_rate?.toFixed(1) || 0}% approval rate</div>
+                  </div>
+                </div>
+                <div className="analytics-card warning">
+                  <div className="card-icon">⏳</div>
+                  <div className="card-content">
+                    <h4>Pending</h4>
+                    <div className="analytics-value">{analytics.pending_requests || 0}</div>
+                    <div className="analytics-trend">Awaiting approval</div>
+                  </div>
+                </div>
+                <div className="analytics-card danger">
+                  <div className="card-icon">❌</div>
+                  <div className="card-content">
+                    <h4>Rejected</h4>
+                    <div className="analytics-value">{analytics.rejected_requests || 0}</div>
+                    <div className="analytics-trend">Need attention</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedMetric === 'performance' && (
+            <div className="analytics-section">
+              <h4>📈 Performance Metrics</h4>
+              <div className="analytics-grid">
+                <div className="analytics-card primary">
+                  <div className="card-icon">⭐</div>
+                  <div className="card-content">
+                    <h4>Avg Performance</h4>
+                    <div className="analytics-value">4.2/5.0</div>
+                    <div className="analytics-trend">+0.3 improvement</div>
+                  </div>
+                </div>
+                <div className="analytics-card success">
+                  <div className="card-icon">🏆</div>
+                  <div className="card-content">
+                    <h4>Top Performers</h4>
+                    <div className="analytics-value">23%</div>
+                    <div className="analytics-trend">Above 4.5 rating</div>
+                  </div>
+                </div>
+                <div className="analytics-card info">
+                  <div className="card-icon">📚</div>
+                  <div className="card-content">
+                    <h4>Training Hours</h4>
+                    <div className="analytics-value">156h</div>
+                    <div className="analytics-trend">This quarter</div>
+                  </div>
+                </div>
+                <div className="analytics-card secondary">
+                  <div className="card-icon">🎯</div>
+                  <div className="card-content">
+                    <h4>Goals Achieved</h4>
+                    <div className="analytics-value">87%</div>
+                    <div className="analytics-trend">On track</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Organization Settings Component
+const OrganizationSettings = ({ organization, onUpdate }) => {
+  const [formData, setFormData] = useState({
+    name: organization?.name || '',
+    logo_base64: organization?.logo_base64 || '',
+    primary_color: organization?.primary_color || '#2DD4BF',
+    secondary_color: organization?.secondary_color || '#0F766E',
+    address: organization?.address || '',
+    phone: organization?.phone || '',
+    email: organization?.email || '',
+    website: organization?.website || '',
+    tax_id: organization?.tax_id || '',
+    currency: organization?.currency || 'USD',
+    timezone: organization?.timezone || 'UTC'
+  });
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, logo_base64: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await axios.put(`${API}/organizations/${organization.id}`, formData);
+      onUpdate();
+      alert('Organization settings updated successfully');
+    } catch (error) {
+      alert('Failed to update organization settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="organization-settings">
+      <div className="settings-header">
+        <h3>Organization Settings</h3>
+        <p className="section-subtitle">Configure your organization's profile and preferences</p>
+      </div>
+      
+      <div className="settings-tabs">
+        <button 
+          className={activeTab === 'general' ? 'active' : ''}
+          onClick={() => setActiveTab('general')}
+        >
+          🏢 General
+        </button>
+        <button 
+          className={activeTab === 'branding' ? 'active' : ''}
+          onClick={() => setActiveTab('branding')}
+        >
+          🎨 Branding
+        </button>
+        <button 
+          className={activeTab === 'compliance' ? 'active' : ''}
+          onClick={() => setActiveTab('compliance')}
+        >
+          📋 Compliance
+        </button>
+        <button 
+          className={activeTab === 'integrations' ? 'active' : ''}
+          onClick={() => setActiveTab('integrations')}
+        >
+          🔗 Integrations
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="settings-form">
+        {activeTab === 'general' && (
+          <div className="tab-content">
+            <h4>General Information</h4>
+            
+            <div className="form-group">
+              <label>Organization Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+                placeholder="Enter organization name"
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="contact@company.com"
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Address</label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                rows="3"
+                placeholder="Enter complete address"
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Website</label>
+                <input
+                  type="url"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  placeholder="https://www.company.com"
+                />
+              </div>
+              <div className="form-group">
+                <label>Tax ID</label>
+                <input
+                  type="text"
+                  value={formData.tax_id}
+                  onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
+                  placeholder="Tax identification number"
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Currency</label>
+                <select
+                  value={formData.currency}
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                >
+                  <option value="USD">🇺🇸 USD - US Dollar</option>
+                  <option value="GBP">🇬🇧 GBP - British Pound</option>
+                  <option value="EUR">🇪🇺 EUR - Euro</option>
+                  <option value="NGN">🇳🇬 NGN - Nigerian Naira</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Timezone</label>
+                <select
+                  value={formData.timezone}
+                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                >
+                  <option value="UTC">UTC - Coordinated Universal Time</option>
+                  <option value="America/New_York">EST - Eastern Standard Time</option>
+                  <option value="America/Los_Angeles">PST - Pacific Standard Time</option>
+                  <option value="Europe/London">GMT - Greenwich Mean Time</option>
+                  <option value="Africa/Lagos">WAT - West Africa Time</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'branding' && (
+          <div className="tab-content">
+            <h4>Brand Identity</h4>
+            
+            <div className="form-group">
+              <label>Logo Upload</label>
+              <div className="logo-upload-area">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  id="logo-upload"
+                  className="file-input"
+                />
+                <label htmlFor="logo-upload" className="upload-label">
+                  {formData.logo_base64 ? (
+                    <div className="logo-preview">
+                      <img src={formData.logo_base64} alt="Logo preview" />
+                      <div className="upload-text">Click to change logo</div>
+                    </div>
+                  ) : (
+                    <div className="upload-placeholder">
+                      <div className="upload-icon">📎</div>
+                      <div className="upload-text">Click to upload logo</div>
+                      <div className="upload-hint">PNG, JPG up to 5MB</div>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label>Primary Color</label>
+                <div className="color-picker">
+                  <input
+                    type="color"
+                    value={formData.primary_color}
+                    onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                    className="color-input"
+                  />
+                  <input
+                    type="text"
+                    value={formData.primary_color}
+                    onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                    className="color-text"
+                    placeholder="#2DD4BF"
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Secondary Color</label>
+                <div className="color-picker">
+                  <input
+                    type="color"
+                    value={formData.secondary_color}
+                    onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
+                    className="color-input"
+                  />
+                  <input
+                    type="text"
+                    value={formData.secondary_color}
+                    onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
+                    className="color-text"
+                    placeholder="#0F766E"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="brand-preview">
+              <h5>Brand Preview</h5>
+              <div 
+                className="preview-card"
+                style={{
+                  background: `linear-gradient(135deg, ${formData.primary_color}, ${formData.secondary_color})`,
+                  color: 'white'
+                }}
+              >
+                <div className="preview-content">
+                  <TimeveraLogo size="small" showText={false} />
+                  <span style={{ marginLeft: '1rem', fontWeight: '600' }}>
+                    {formData.name || 'Organization Name'}
+                  </span>
+                </div>
+                <p>This is how your brand colors will appear</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'compliance' && (
+          <div className="tab-content">
+            <h4>Compliance & Policies</h4>
+            
+            <div className="compliance-section">
+              <h5>Leave Policies</h5>
+              <div className="policy-grid">
+                <div className="policy-item">
+                  <label>Annual Vacation Days</label>
+                  <input type="number" defaultValue="20" min="0" max="50" />
+                </div>
+                <div className="policy-item">
+                  <label>Sick Leave Days</label>
+                  <input type="number" defaultValue="10" min="0" max="30" />
+                </div>
+                <div className="policy-item">
+                  <label>Personal Days</label>
+                  <input type="number" defaultValue="5" min="0" max="15" />
+                </div>
+              </div>
+            </div>
+
+            <div className="compliance-section">
+              <h5>Work Policies</h5>
+              <div className="policy-grid">
+                <div className="policy-item">
+                  <label>Standard Work Hours</label>
+                  <input type="number" defaultValue="8" min="6" max="12" />
+                </div>
+                <div className="policy-item">
+                  <label>Overtime Threshold</label>
+                  <input type="number" defaultValue="40" min="35" max="50" />
+                </div>
+                <div className="policy-item">
+                  <label>Break Duration (minutes)</label>
+                  <input type="number" defaultValue="60" min="30" max="120" />
+                </div>
+              </div>
+            </div>
+
+            <div className="compliance-section">
+              <h5>Data Retention</h5>
+              <div className="policy-item">
+                <label>Employee Record Retention (years)</label>
+                <select defaultValue="7">
+                  <option value="3">3 years</option>
+                  <option value="5">5 years</option>
+                  <option value="7">7 years</option>
+                  <option value="10">10 years</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'integrations' && (
+          <div className="tab-content">
+            <h4>Third-party Integrations</h4>
+            
+            <div className="integrations-grid">
+              <div className="integration-card">
+                <div className="integration-header">
+                  <div className="integration-icon">💳</div>
+                  <div>
+                    <h5>Stripe Payments</h5>
+                    <p>Payment processing for subscriptions</p>
+                  </div>
+                  <div className="integration-status connected">Connected</div>
+                </div>
+                <div className="integration-actions">
+                  <button className="config-btn">Configure</button>
+                </div>
+              </div>
+
+              <div className="integration-card">
+                <div className="integration-header">
+                  <div className="integration-icon">📧</div>
+                  <div>
+                    <h5>Email Service</h5>
+                    <p>Automated email notifications</p>
+                  </div>
+                  <div className="integration-status available">Available</div>
+                </div>
+                <div className="integration-actions">
+                  <button className="connect-btn">Connect</button>
+                </div>
+              </div>
+
+              <div className="integration-card">
+                <div className="integration-header">
+                  <div className="integration-icon">📊</div>
+                  <div>
+                    <h5>Analytics Tools</h5>
+                    <p>Advanced reporting and insights</p>
+                  </div>
+                  <div className="integration-status available">Available</div>
+                </div>
+                <div className="integration-actions">
+                  <button className="connect-btn">Connect</button>
+                </div>
+              </div>
+
+              <div className="integration-card">
+                <div className="integration-header">
+                  <div className="integration-icon">🔐</div>
+                  <div>
+                    <h5>SSO Integration</h5>
+                    <p>Single Sign-On for enterprise</p>
+                  </div>
+                  <div className="integration-status premium">Premium</div>
+                </div>
+                <div className="integration-actions">
+                  <button className="upgrade-btn">Upgrade</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="form-actions">
+          <button type="submit" disabled={loading} className="save-button">
+            {loading ? '⏳ Saving...' : '💾 Save Settings'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
 const Dashboard = ({ user, organization, onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [dashboardStats, setDashboardStats] = useState(null);
