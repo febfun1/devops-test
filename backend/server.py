@@ -949,7 +949,8 @@ async def attendance_action(action_data: AttendanceAction):
         )
         attendance_dict = attendance.dict()
     else:
-        attendance_dict = fix_object_id(attendance)
+        # Work with the raw attendance record (keep ObjectId for database operations)
+        attendance_dict = attendance.copy()
     
     # Handle different actions
     if action_data.action == "clock_in":
