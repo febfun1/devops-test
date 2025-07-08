@@ -313,7 +313,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info("✅ Successfully clocked out employee")
     
-    def test_08_get_current_attendance(self):
+    def test_11_get_current_attendance(self):
         """Test getting current attendance status"""
         employee = self.__class__.test_users.get("employee")
         if not employee:
@@ -327,7 +327,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info(f"✅ Successfully retrieved current attendance status: {result['status']}")
     
-    def test_09_get_attendance_history(self):
+    def test_12_get_attendance_history(self):
         """Test getting attendance history"""
         employee = self.__class__.test_users.get("employee")
         if not employee:
@@ -341,7 +341,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info(f"✅ Successfully retrieved attendance history with {len(history)} records")
     
-    def test_10_get_company_attendance(self):
+    def test_13_get_company_attendance(self):
         """Test getting company-wide attendance"""
         if not self.__class__.company_id:
             self.skipTest("No company ID available")
