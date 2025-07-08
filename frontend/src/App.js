@@ -1951,6 +1951,209 @@ const OrganizationSettings = ({ organization, onUpdate }) => {
     </div>
   );
 };
+// Subscription Plans Component
+const SubscriptionPlans = ({ organization, onSubscribe }) => {
+  const [selectedTier, setSelectedTier] = useState('premium');
+  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [loading, setLoading] = useState(false);
+  const [pricing, setPricing] = useState({});
+
+  useEffect(() => {
+    loadPricing();
+  }, []);
+
+  const loadPricing = async () => {
+    try {
+      const response = await axios.get(`${API}/subscriptions/pricing`);
+      setPricing(response.data);
+    } catch (error) {
+      console.error('Error loading pricing:', error);
+    }
+  };
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.post(`${API}/subscriptions/create-checkout-session`, {
+        organization_id: organization.id,
+        tier: selectedTier,
+        currency: selectedCurrency
+      });
+      
+      window.location.href = response.data.checkout_url;
+    } catch (error) {
+      alert('Failed to create subscription');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tiers = {
+    basic: {
+      name: 'Basic Plan',
+      description: 'Perfect for small teams getting started',
+      features: [
+        'Up to 25 employees',
+        'Basic attendance tracking',
+        'Payroll generation',
+        'Leave management',
+        'Basic reports',
+        'Email support',
+        'Mobile access'
+      ],
+      limitations: [
+        'No custom branding',
+        'Limited integrations',
+        'Basic analytics only'
+      ]
+    },
+    premium: {
+      name: 'Premium Plan',
+      description: 'Most popular for growing businesses',
+      popular: true,
+      features: [
+        'Up to 100 employees',
+        'Advanced attendance tracking',
+        'Custom branding & logos',
+        'Performance tracking',
+        'Advanced reports & analytics',
+        'API access',
+        'Priority support',
+        'Leave workflow automation',
+        'Department management'
+      ]
+    },
+    enterprise: {
+      name: 'Enterprise Plan',
+      description: 'Complete solution for large organizations',
+      features: [
+        'Unlimited employees',
+        'White-label solution',
+        'Custom integrations',
+        'Advanced security & compliance',
+        'Audit logs & data export',
+        'SSO integration',
+        'Dedicated account manager',
+        'Custom training & onboarding',
+        'SLA guarantee',
+        'Advanced workflow automation'
+      ]
+    }
+  };
+
+  if (!pricing || !pricing.basic) {
+    return (
+      <div className="subscription-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading subscription plans...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="subscription-plans">
+      <div className="subscription-header">
+        <h2>Choose Your Timevera Plan</h2>
+        <p className="subscription-subtitle">
+          Flexible pricing designed to grow with your business
+        </p>
+      </div>
+      
+      <div className="currency-selector">
+        <label>Currency:</label>
+        <select 
+          value={selectedCurrency} 
+          onChange={(e) => setSelectedCurrency(e.target.value)}
+        >
+          <option value="USD">🇺🇸 USD ($)</option>
+          <option value="GBP">🇬🇧 GBP (£)</option>
+          <option value="EUR">🇪🇺 EUR (€)</option>
+          <option value="NGN">🇳🇬 NGN (₦)</option>
+        </select>
+      </div>
+
+      <div className="plans-grid">
+        {Object.entries(tiers).map(([tierKey, tier]) => (
+          <div 
+            key={tierKey}
+            className={`plan-card ${selectedTier === tierKey ? 'selected' : ''} ${tier.popular ? 'popular' : ''}`}
+            onClick={() => setSelectedTier(tierKey)}
+          >
+            {tier.popular && <div className="popular-badge">Most Popular</div>}
+            
+            <div className="plan-header">
+              <h3>{tier.name}</h3>
+              <p className="plan-description">{tier.description}</p>
+            </div>
+            
+            <div className="price">
+              {pricing[tierKey] && pricing[tierKey][selectedCurrency] ? (
+                <>
+                  <span className="currency">{pricing[tierKey][selectedCurrency].symbol}</span>
+                  <span className="amount">
+                    {(pricing[tierKey][selectedCurrency].amount / 100).toFixed(2)}
+                  </span>
+                  <span className="period">/month</span>
+                </>
+              ) : (
+                <span className="loading-price">Loading...</span>
+              )}
+            </div>
+
+            <div className="features-section">
+              <h4>✅ Included Features</h4>
+              <ul className="features">
+                {tier.features.map((feature, index) => (
+                  <li key={index}>{feature}</li>
+                ))}
+              </ul>
+              
+              {tier.limitations && (
+                <div className="limitations">
+                  <h4>⚠️ Limitations</h4>
+                  <ul>
+                    {tier.limitations.map((limitation, index) => (
+                      <li key={index}>{limitation}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="plan-footer">
+              <div className="trial-info">
+                <span>🎁 14-day free trial</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="subscription-actions">
+        <button 
+          onClick={handleSubscribe}
+          disabled={loading}
+          className="subscribe-button"
+        >
+          {loading ? '⏳ Processing...' : `🚀 Start ${tiers[selectedTier].name} Trial`}
+        </button>
+        
+        <div className="subscription-features">
+          <div className="feature-item">✅ No setup fees</div>
+          <div className="feature-item">✅ Cancel anytime</div>
+          <div className="feature-item">✅ 24/7 support</div>
+          <div className="feature-item">✅ Data migration included</div>
+        </div>
+      </div>
+
+      <div className="enterprise-contact">
+        <h3>Need a custom solution?</h3>
+        <p>Contact our enterprise team for volume discounts and custom integrations</p>
+        <button className="contact-sales-btn">📞 Contact Sales</button>
+      </div>
+    </div>
+  );
+};
 const Dashboard = ({ user, organization, onLogout }) => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [dashboardStats, setDashboardStats] = useState(null);
