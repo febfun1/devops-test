@@ -203,6 +203,7 @@ class User(BaseModel):
     last_name: str
     role: UserRole
     organization_id: str
+    secret_code: Optional[str] = Field(default_factory=lambda: generate_secret_code())
     department: Optional[str] = None
     position: Optional[str] = None
     employee_id: Optional[str] = None
