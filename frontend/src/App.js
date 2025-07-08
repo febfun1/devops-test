@@ -3169,6 +3169,226 @@ const Dashboard = ({ user, organization, onLogout }) => {
   );
 };
 
+// Profile Management Component
+const ProfileManagement = ({ user }) => {
+  const [secretCode, setSecretCode] = useState('');
+  const [newSecretCode, setNewSecretCode] = useState('');
+  const [showSecretCode, setShowSecretCode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    loadSecretCode();
+  }, []);
+
+  const loadSecretCode = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API}/auth/get-secret-code/${user.id}`);
+      setSecretCode(response.data.secret_code);
+    } catch (error) {
+      setMessage('Failed to load secret code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateNewSecretCode = async () => {
+    setUpdateLoading(true);
+    setMessage('');
+    try {
+      const response = await axios.put(`${API}/auth/update-secret-code/${user.id}`, {
+        current_secret_code: secretCode,
+        new_secret_code: null // Will generate a new one
+      });
+      setSecretCode(response.data.new_secret_code);
+      setMessage('Secret code updated successfully!');
+    } catch (error) {
+      setMessage('Failed to update secret code');
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const updateToCustomSecretCode = async () => {
+    if (!newSecretCode.trim()) {
+      setMessage('Please enter a new secret code');
+      return;
+    }
+    
+    setUpdateLoading(true);
+    setMessage('');
+    try {
+      const response = await axios.put(`${API}/auth/update-secret-code/${user.id}`, {
+        current_secret_code: secretCode,
+        new_secret_code: newSecretCode.trim()
+      });
+      setSecretCode(response.data.new_secret_code);
+      setNewSecretCode('');
+      setMessage('Secret code updated successfully!');
+    } catch (error) {
+      setMessage(error.response?.data?.detail || 'Failed to update secret code');
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setMessage('Secret code copied to clipboard!');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  return (
+    <div className="profile-management">
+      <div className="profile-header">
+        <h3>👤 My Profile</h3>
+        <p className="section-subtitle">Manage your account settings and secret code</p>
+      </div>
+
+      {/* User Information Card */}
+      <div className="profile-card">
+        <div className="profile-info">
+          <div className="profile-avatar">
+            {user.avatar_base64 ? (
+              <img src={user.avatar_base64} alt="Profile" />
+            ) : (
+              <div className="avatar-placeholder">
+                {user.first_name[0]}{user.last_name[0]}
+              </div>
+            )}
+          </div>
+          <div className="profile-details">
+            <h4>{user.first_name} {user.last_name}</h4>
+            <p className="user-role">{user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
+            <p className="user-email">{user.email}</p>
+            <p className="user-id">Employee ID: {user.employee_id || 'Not Set'}</p>
+            <p className="user-department">{user.department} • {user.position}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Secret Code Management */}
+      <div className="secret-code-management">
+        <div className="card-header">
+          <h4>🔑 Employee Secret Code</h4>
+          <p>Use this code to login instead of your email address</p>
+        </div>
+
+        <div className="secret-code-display">
+          <div className="current-code">
+            <label>Your Current Secret Code:</label>
+            <div className="code-container">
+              {loading ? (
+                <div className="code-loading">Loading...</div>
+              ) : (
+                <>
+                  <input 
+                    type={showSecretCode ? 'text' : 'password'}
+                    value={secretCode}
+                    readOnly
+                    className="secret-code-input"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowSecretCode(!showSecretCode)}
+                    className="toggle-visibility-btn"
+                  >
+                    {showSecretCode ? '🙈' : '👁️'}
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => copyToClipboard(secretCode)}
+                    className="copy-btn"
+                  >
+                    📋 Copy
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="code-actions">
+            <div className="action-section">
+              <h5>Generate New Secret Code</h5>
+              <p>Get a randomly generated secure code</p>
+              <button 
+                onClick={generateNewSecretCode}
+                disabled={updateLoading}
+                className="generate-btn"
+              >
+                {updateLoading ? '⏳ Generating...' : '🎲 Generate New Code'}
+              </button>
+            </div>
+
+            <div className="action-section">
+              <h5>Set Custom Secret Code</h5>
+              <p>Choose your own memorable code (6-20 characters)</p>
+              <div className="custom-code-input">
+                <input 
+                  type="text"
+                  value={newSecretCode}
+                  onChange={(e) => setNewSecretCode(e.target.value)}
+                  placeholder="Enter custom secret code"
+                  minLength="6"
+                  maxLength="20"
+                />
+                <button 
+                  onClick={updateToCustomSecretCode}
+                  disabled={updateLoading || !newSecretCode.trim()}
+                  className="update-btn"
+                >
+                  {updateLoading ? '⏳ Updating...' : '✅ Set Custom Code'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="secret-code-tips">
+          <h5>💡 Secret Code Tips:</h5>
+          <ul>
+            <li>• Use your secret code to login from any device</li>
+            <li>• Keep your code secure and don't share it</li>
+            <li>• You can change it anytime from this page</li>
+            <li>• Secret codes are case-sensitive</li>
+            <li>• Use USSD: Dial *123*45# and enter your secret code for quick clock-in</li>
+          </ul>
+        </div>
+
+        {message && (
+          <div className={`message ${message.includes('success') ? 'success' : 'error'}`}>
+            {message}
+          </div>
+        )}
+      </div>
+
+      {/* Login Methods */}
+      <div className="login-methods">
+        <h4>🚪 Available Login Methods</h4>
+        <div className="methods-grid">
+          <div className="method-card">
+            <h5>📧 Email Login</h5>
+            <p>Login with: <strong>{user.email}</strong></p>
+            <p>Standard email and password authentication</p>
+          </div>
+          <div className="method-card">
+            <h5>🔑 Secret Code Login</h5>
+            <p>Login with: <strong>{showSecretCode ? secretCode : '••••••••••••'}</strong></p>
+            <p>Quick access using your secret code</p>
+          </div>
+          <div className="method-card">
+            <h5>📱 USSD Clock-in</h5>
+            <p>Dial: <strong>*123*45#</strong></p>
+            <p>Clock in/out from any mobile phone</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Landing Page Component
 const LandingPage = ({ onGetStarted }) => {
   return (
