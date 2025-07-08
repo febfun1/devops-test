@@ -440,7 +440,7 @@ const Login = ({ onLogin, switchToRegister }) => {
     setLoading(true);
     setError('');
 
-    const result = await onLogin(formData.emailOrCode, formData.password);
+    const result = await onLogin(formData.emailOrCode, formData.password, loginType);
     if (!result.success) {
       setError(result.error);
     }
