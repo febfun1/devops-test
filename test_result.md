@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the LEXA HR/Payroll/Attendance system backend thoroughly"
+user_problem_statement: "Test the Timevera HR/Payroll/Attendance system backend thoroughly"
 
 backend:
   - task: "Authentication - User Registration"
