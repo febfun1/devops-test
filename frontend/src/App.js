@@ -523,14 +523,16 @@ const Dashboard = ({ user, organization, onLogout }) => {
   );
 
   const OrganizationBranding = () => {
-    if (!organization) return null;
+    if (!organization) return <TimeveraLogo size="medium" />;
     
     return (
       <div className="organization-branding">
-        {organization.logo_base64 && (
+        {organization.logo_base64 ? (
           <img src={organization.logo_base64} alt={organization.name} className="org-logo" />
+        ) : (
+          <TimeveraLogo size="medium" showText={false} />
         )}
-        <h1 style={{ color: organization.primary_color || '#3b82f6' }}>{organization.name}</h1>
+        <h1 style={{ color: organization.primary_color || '#0F766E' }}>{organization.name}</h1>
       </div>
     );
   };
@@ -540,7 +542,7 @@ const Dashboard = ({ user, organization, onLogout }) => {
       <nav className="dashboard-nav">
         <div className="nav-brand">
           <OrganizationBranding />
-          <span>Powered by LEXA</span>
+          <span className="powered-by">Powered by Timevera</span>
         </div>
         
         <div className="nav-menu">
@@ -621,15 +623,22 @@ const Dashboard = ({ user, organization, onLogout }) => {
             </div>
             
             <div className="feature-notice">
-              <h3>🚀 LEXA v3.0 - Enterprise Features Available!</h3>
+              <div className="timevera-brand-header">
+                <TimeveraLogo size="large" />
+                <div>
+                  <h3>🚀 Timevera v3.0 - Enterprise Features Available!</h3>
+                  <p>Complete HR, Payroll & Attendance Management Solution</p>
+                </div>
+              </div>
               <div className="features-list">
-                <div className="feature-item">✓ Leave Management System</div>
+                <div className="feature-item">✓ Real-time Attendance Tracking</div>
+                <div className="feature-item">✓ Advanced Leave Management</div>
                 <div className="feature-item">✓ Employee Management Portal</div>
-                <div className="feature-item">✓ Advanced Analytics & Reporting</div>
-                <div className="feature-item">✓ Multi-currency Payroll</div>
+                <div className="feature-item">✓ Multi-currency Payroll System</div>
                 <div className="feature-item">✓ Custom Organization Branding</div>
-                <div className="feature-item">✓ Real-time Notifications</div>
+                <div className="feature-item">✓ Analytics & Reporting Dashboard</div>
                 <div className="feature-item">✓ Data Export & API Access</div>
+                <div className="feature-item">✓ Cross-platform Compatibility</div>
               </div>
               <p className="upgrade-message">
                 Upgrade to Premium or Enterprise to unlock all features!
@@ -640,12 +649,26 @@ const Dashboard = ({ user, organization, onLogout }) => {
         
         {currentView !== 'dashboard' && (
           <div className="coming-soon">
+            <TimeveraLogo size="large" />
             <h3>🔧 {currentView.charAt(0).toUpperCase() + currentView.slice(1)} Module</h3>
             <p>This advanced feature is being loaded...</p>
-            <p>LEXA v3.0 includes comprehensive {currentView} management with enterprise-grade capabilities.</p>
+            <p>Timevera v3.0 includes comprehensive {currentView} management with enterprise-grade capabilities.</p>
           </div>
         )}
       </main>
+      
+      <footer className="dashboard-footer">
+        <div className="footer-content">
+          <div className="footer-brand">
+            <TimeveraLogo size="small" />
+          </div>
+          <div className="footer-links">
+            <span>Terms of Use</span>
+            <span>Privacy Policy</span>
+            <span>© 2025 Timevera. All Rights Reserved.</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
@@ -656,7 +679,10 @@ const LandingPage = ({ onGetStarted }) => {
     <div className="landing-page">
       <div className="hero-section">
         <div className="hero-content">
-          <h1>Welcome to LEXA</h1>
+          <div className="hero-brand">
+            <TimeveraLogo size="large" />
+          </div>
+          <h1>Welcome to Timevera</h1>
           <p className="hero-subtitle">
             The comprehensive HR, Payroll & Attendance management system
           </p>
@@ -681,6 +707,19 @@ const LandingPage = ({ onGetStarted }) => {
           />
         </div>
       </div>
+      
+      <footer className="landing-footer">
+        <div className="footer-content">
+          <div className="footer-brand">
+            <TimeveraLogo size="small" />
+          </div>
+          <div className="footer-links">
+            <span>Terms of Use</span>
+            <span>Privacy Policy</span>
+            <span>© 2025 Timevera. All Rights Reserved.</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
