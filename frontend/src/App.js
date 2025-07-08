@@ -3050,6 +3050,12 @@ const Dashboard = ({ user, organization, onLogout }) => {
           >
             Leave Management
           </button>
+          <button 
+            className={currentView === 'profile' ? 'active' : ''}
+            onClick={() => setCurrentView('profile')}
+          >
+            🔑 My Profile
+          </button>
           {(user.role === 'admin' || user.role === 'hr') && (
             <>
               <button 
