@@ -2214,12 +2214,9 @@ const Dashboard = ({ user, organization, onLogout }) => {
       </div>
       
       <div className="stat-card">
-        <h4>Status</h4>
-        <div className="stat-value">
-          {dashboardStats?.current_status === 'clocked_in' ? '🟢' : 
-           dashboardStats?.current_status === 'break' ? '🟡' : '🔴'}
-        </div>
-        <div className="stat-label">Current</div>
+        <h4>Leave Balance</h4>
+        <div className="stat-value">{dashboardStats?.leave_balances?.vacation || 0}</div>
+        <div className="stat-label">Vacation Days</div>
       </div>
     </div>
   );
@@ -2258,13 +2255,33 @@ const Dashboard = ({ user, organization, onLogout }) => {
           >
             Attendance
           </button>
+          <button 
+            className={currentView === 'leaves' ? 'active' : ''}
+            onClick={() => setCurrentView('leaves')}
+          >
+            Leave Management
+          </button>
           {(user.role === 'admin' || user.role === 'hr') && (
-            <button 
-              className={currentView === 'payroll' ? 'active' : ''}
-              onClick={() => setCurrentView('payroll')}
-            >
-              Payroll
-            </button>
+            <>
+              <button 
+                className={currentView === 'employees' ? 'active' : ''}
+                onClick={() => setCurrentView('employees')}
+              >
+                Employees
+              </button>
+              <button 
+                className={currentView === 'payroll' ? 'active' : ''}
+                onClick={() => setCurrentView('payroll')}
+              >
+                Payroll
+              </button>
+              <button 
+                className={currentView === 'analytics' ? 'active' : ''}
+                onClick={() => setCurrentView('analytics')}
+              >
+                Analytics
+              </button>
+            </>
           )}
           {user.role === 'admin' && (
             <button 
@@ -2285,6 +2302,7 @@ const Dashboard = ({ user, organization, onLogout }) => {
         </div>
         
         <div className="nav-user">
+          <NotificationCenter user={user} />
           <span>Welcome, {user.first_name}</span>
           <button onClick={onLogout} className="logout-btn">Logout</button>
         </div>
@@ -2304,8 +2322,20 @@ const Dashboard = ({ user, organization, onLogout }) => {
           </div>
         )}
         
+        {currentView === 'leaves' && (
+          <LeaveManagement user={user} organization={organization} />
+        )}
+        
+        {currentView === 'employees' && (
+          <EmployeeManagement organization={organization} user={user} />
+        )}
+        
         {currentView === 'payroll' && (
           <PayrollManagement organization={organization} user={user} />
+        )}
+        
+        {currentView === 'analytics' && (
+          <AnalyticsDashboard organization={organization} />
         )}
         
         {currentView === 'settings' && (
