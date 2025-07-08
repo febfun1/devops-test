@@ -387,7 +387,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info(f"✅ Successfully retrieved {len(users)} company users")
     
-    def test_13_edge_cases(self):
+    def test_16_edge_cases(self):
         """Test various edge cases"""
         employee = self.__class__.test_users.get("employee")
         if not employee:
@@ -416,6 +416,38 @@ class TimeveraHRSystemTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400, "Break start without clock in should be rejected")
         
         logger.info("✅ Break start without clock in correctly rejected")
+    
+    def test_17_verify_login_after_secret_code_update(self):
+        """Test login with updated secret code"""
+        employee = self.__class__.test_users.get("employee")
+        if not employee:
+            self.skipTest("No employee user available")
+        
+        # Try login with updated secret code
+        login_data = {
+            "secret_code": employee["secret_code"],
+            "password": "Password123!"
+        }
+        
+        response = requests.post(f"{BACKEND_URL}/auth/login-secret", json=login_data)
+        self.assertEqual(response.status_code, 200, f"Failed to login with updated secret code: {response.text}")
+        
+        result = response.json()
+        self.assertIn("user", result, "User data not returned")
+        self.assertEqual(result["user"]["email"], employee["email"], "Email mismatch")
+        
+        logger.info(f"✅ Successfully logged in with updated secret code")
+        
+        # Verify email login still works
+        login_data = {
+            "email": employee["email"],
+            "password": "Password123!"
+        }
+        
+        response = requests.post(f"{BACKEND_URL}/auth/login", json=login_data)
+        self.assertEqual(response.status_code, 200, f"Failed to login with email after secret code update: {response.text}")
+        
+        logger.info(f"✅ Email login still works after secret code update")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
