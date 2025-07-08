@@ -494,7 +494,7 @@ async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks
         user.id,
         organization_id,
         NotificationType.SYSTEM_UPDATE,
-        "Welcome to LEXA!",
+        "Welcome to Timevera!",
         f"Welcome {user.first_name}! Your account has been created successfully."
     )
     
