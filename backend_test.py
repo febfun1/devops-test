@@ -291,7 +291,7 @@ class TimeveraHRSystemTest(unittest.TestCase):
         
         logger.info("✅ Successfully ended break")
     
-    def test_07_attendance_clock_out(self):
+    def test_10_attendance_clock_out(self):
         """Test clock out functionality"""
         employee = self.__class__.test_users.get("employee")
         if not employee:
