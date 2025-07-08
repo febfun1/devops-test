@@ -368,6 +368,10 @@ class PayslipRequest(BaseModel):
     organization_id: str
 
 # Helper functions
+def generate_secret_code() -> str:
+    """Generate a random secret code for user authentication"""
+    return str(uuid.uuid4().hex[:12])
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
