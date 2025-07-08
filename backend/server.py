@@ -887,6 +887,7 @@ async def export_attendance_data(org_id: str, start_date: str, end_date: str):
         for record in attendance_records:
             user = await db.users.find_one({"id": record["user_id"]})
             if user:
+                user = fix_object_id(user)
                 writer.writerow([
                     f"{user['first_name']} {user['last_name']}",
                     user.get("employee_id", ""),
