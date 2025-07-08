@@ -123,11 +123,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: false
         agent: "testing"
         comment: "Login functionality has issues with MongoDB ObjectId serialization. Invalid login credentials are correctly rejected with 401, but valid login attempts result in 500 Internal Server Error."
+      - working: "fixing"
+        agent: "main"
+        comment: "Identified issue in dashboard stats endpoint where user object is not being processed through fix_object_id function. Working on comprehensive fix."
 
   - task: "Company Management - Create Company"
     implemented: true
