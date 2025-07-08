@@ -173,15 +173,18 @@ backend:
 
   - task: "Attendance - Clock Out"
     implemented: true
-    working: false
+    working: true
     file: "/app/backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
         comment: "Clock out functionality has issues with MongoDB ObjectId serialization. Attempting to clock out results in 500 Internal Server Error."
+      - working: true
+        agent: "main"
+        comment: "FIXED: ObjectId serialization issues resolved. Removed fix_object_id from database update operations. Clock out now working correctly."
 
   - task: "Attendance - Break Management"
     implemented: true
