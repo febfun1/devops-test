@@ -26,6 +26,7 @@ class LexaHRSystemTest(unittest.TestCase):
         """Set up test data that will be used across tests"""
         cls.test_users = {}
         cls.company_id = None
+        cls.current_attendance = None
     
     def test_01_company_creation(self):
         """Test company creation endpoint"""
@@ -38,7 +39,7 @@ class LexaHRSystemTest(unittest.TestCase):
             "timezone": "UTC"
         }
         
-        response = requests.post(f"{BACKEND_URL}/companies", json=company_data)
+        response = requests.post(f"{BACKEND_URL}/organizations", json=company_data)
         self.assertEqual(response.status_code, 200, f"Failed to create company: {response.text}")
         
         company = response.json()
@@ -49,7 +50,7 @@ class LexaHRSystemTest(unittest.TestCase):
     
     def test_02_get_companies(self):
         """Test retrieving companies endpoint"""
-        response = requests.get(f"{BACKEND_URL}/companies")
+        response = requests.get(f"{BACKEND_URL}/organizations")
         self.assertEqual(response.status_code, 200, f"Failed to get companies: {response.text}")
         
         companies = response.json()
@@ -102,9 +103,25 @@ class LexaHRSystemTest(unittest.TestCase):
         
         logger.info("✅ Invalid login correctly rejected")
         
-        # Skip valid login tests for now due to ObjectId serialization issues
-        logger.info("⚠️ Skipping valid login tests due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        # Test valid login with each role
+        for role, user in self.__class__.test_users.items():
+            login_data = {
+                "email": user["email"],
+                "password": "Password123!"
+            }
+            
+            response = requests.post(f"{BACKEND_URL}/auth/login", json=login_data)
+            self.assertEqual(response.status_code, 200, f"Failed to login as {role}: {response.text}")
+            
+            result = response.json()
+            self.assertIn("user", result, f"User data not returned for {role}")
+            self.assertEqual(result["user"]["email"], user["email"], f"Email mismatch for {role}")
+            self.assertEqual(result["user"]["role"], role, f"Role mismatch for {role}")
+            
+            # Verify ObjectId fields are properly serialized
+            self.assertIsInstance(result["user"]["_id"], str, "ObjectId not properly serialized to string")
+            
+            logger.info(f"✅ Successfully logged in as {role}")
     
     def test_05_attendance_clock_in(self):
         """Test clock in functionality"""
@@ -127,6 +144,9 @@ class LexaHRSystemTest(unittest.TestCase):
         self.assertEqual(result["attendance"]["status"], "clocked_in", "Status should be clocked_in")
         self.assertEqual(result["attendance"]["project_name"], "Test Project", "Project name mismatch")
         
+        # Store attendance record for later tests
+        self.__class__.current_attendance = result["attendance"]
+        
         logger.info("✅ Successfully clocked in employee")
         
         # Test duplicate clock in (should fail)
@@ -137,45 +157,140 @@ class LexaHRSystemTest(unittest.TestCase):
     
     def test_06_attendance_break(self):
         """Test break start/end functionality"""
-        # Skip due to serialization issues
-        logger.info("⚠️ Skipping break tests due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        employee = self.__class__.test_users.get("employee")
+        if not employee or not self.__class__.current_attendance:
+            self.skipTest("No employee user or current attendance available")
+        
+        # Start break
+        action_data = {
+            "user_id": employee["id"],
+            "action": "break_start"
+        }
+        
+        response = requests.post(f"{BACKEND_URL}/attendance/action", json=action_data)
+        self.assertEqual(response.status_code, 200, f"Failed to start break: {response.text}")
+        
+        result = response.json()
+        self.assertIn("attendance", result, "Attendance data not returned")
+        self.assertEqual(result["attendance"]["status"], "break", "Status should be break")
+        self.assertIsNotNone(result["attendance"]["break_start"], "Break start time should be set")
+        
+        logger.info("✅ Successfully started break")
+        
+        # Wait a moment before ending break
+        time.sleep(2)
+        
+        # End break
+        action_data = {
+            "user_id": employee["id"],
+            "action": "break_end"
+        }
+        
+        response = requests.post(f"{BACKEND_URL}/attendance/action", json=action_data)
+        self.assertEqual(response.status_code, 200, f"Failed to end break: {response.text}")
+        
+        result = response.json()
+        self.assertIn("attendance", result, "Attendance data not returned")
+        self.assertEqual(result["attendance"]["status"], "clocked_in", "Status should be clocked_in")
+        self.assertIsNotNone(result["attendance"]["break_end"], "Break end time should be set")
+        
+        logger.info("✅ Successfully ended break")
     
     def test_07_attendance_clock_out(self):
         """Test clock out functionality"""
-        # Skip due to serialization issues
-        logger.info("⚠️ Skipping clock out test due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        employee = self.__class__.test_users.get("employee")
+        if not employee:
+            self.skipTest("No employee user available")
+        
+        action_data = {
+            "user_id": employee["id"],
+            "action": "clock_out"
+        }
+        
+        response = requests.post(f"{BACKEND_URL}/attendance/action", json=action_data)
+        self.assertEqual(response.status_code, 200, f"Failed to clock out: {response.text}")
+        
+        result = response.json()
+        self.assertIn("attendance", result, "Attendance data not returned")
+        self.assertEqual(result["attendance"]["status"], "clocked_out", "Status should be clocked_out")
+        self.assertIsNotNone(result["attendance"]["clock_out"], "Clock out time should be set")
+        self.assertIsNotNone(result["attendance"]["total_hours"], "Total hours should be calculated")
+        
+        logger.info("✅ Successfully clocked out employee")
     
     def test_08_get_current_attendance(self):
         """Test getting current attendance status"""
-        # Skip due to serialization issues
-        logger.info("⚠️ Skipping current attendance test due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        employee = self.__class__.test_users.get("employee")
+        if not employee:
+            self.skipTest("No employee user available")
+        
+        response = requests.get(f"{BACKEND_URL}/attendance/current/{employee['id']}")
+        self.assertEqual(response.status_code, 200, f"Failed to get current attendance: {response.text}")
+        
+        result = response.json()
+        self.assertIn("status", result, "Status not returned")
+        
+        logger.info(f"✅ Successfully retrieved current attendance status: {result['status']}")
     
     def test_09_get_attendance_history(self):
         """Test getting attendance history"""
-        # Skip due to serialization issues
-        logger.info("⚠️ Skipping attendance history test due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        employee = self.__class__.test_users.get("employee")
+        if not employee:
+            self.skipTest("No employee user available")
+        
+        response = requests.get(f"{BACKEND_URL}/attendance/history/{employee['id']}")
+        self.assertEqual(response.status_code, 200, f"Failed to get attendance history: {response.text}")
+        
+        history = response.json()
+        self.assertIsInstance(history, list, "History should be returned as a list")
+        
+        logger.info(f"✅ Successfully retrieved attendance history with {len(history)} records")
     
     def test_10_get_company_attendance(self):
         """Test getting company-wide attendance"""
-        # Skip due to serialization issues
-        logger.info("⚠️ Skipping company attendance test due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        if not self.__class__.company_id:
+            self.skipTest("No company ID available")
+        
+        response = requests.get(f"{BACKEND_URL}/attendance/organization/{self.__class__.company_id}")
+        self.assertEqual(response.status_code, 200, f"Failed to get company attendance: {response.text}")
+        
+        attendance = response.json()
+        self.assertIsInstance(attendance, list, "Attendance should be returned as a list")
+        
+        logger.info(f"✅ Successfully retrieved company attendance with {len(attendance)} records")
     
     def test_11_get_dashboard_stats(self):
         """Test getting dashboard statistics"""
-        # Skip due to serialization issues
-        logger.info("⚠️ Skipping dashboard stats test due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        employee = self.__class__.test_users.get("employee")
+        if not employee:
+            self.skipTest("No employee user available")
+        
+        response = requests.get(f"{BACKEND_URL}/dashboard/stats/{employee['id']}")
+        self.assertEqual(response.status_code, 200, f"Failed to get dashboard stats: {response.text}")
+        
+        stats = response.json()
+        self.assertIn("current_status", stats, "Current status not returned")
+        self.assertIn("leave_balances", stats, "Leave balances not returned")
+        
+        logger.info(f"✅ Successfully retrieved dashboard statistics")
     
     def test_12_get_company_users(self):
         """Test getting company users"""
-        # Skip due to serialization issues
-        logger.info("⚠️ Skipping company users test due to known serialization issues")
-        self.skipTest("Skipping due to known serialization issues with MongoDB ObjectId")
+        if not self.__class__.company_id:
+            self.skipTest("No company ID available")
+        
+        response = requests.get(f"{BACKEND_URL}/employees/organization/{self.__class__.company_id}")
+        self.assertEqual(response.status_code, 200, f"Failed to get company users: {response.text}")
+        
+        users = response.json()
+        self.assertIsInstance(users, list, "Users should be returned as a list")
+        self.assertGreaterEqual(len(users), 1, "At least one user should exist")
+        
+        # Verify ObjectId fields are properly serialized
+        for user in users:
+            self.assertIsInstance(user["_id"], str, "ObjectId not properly serialized to string")
+        
+        logger.info(f"✅ Successfully retrieved {len(users)} company users")
     
     def test_13_edge_cases(self):
         """Test various edge cases"""
