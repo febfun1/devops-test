@@ -756,6 +756,8 @@ async def reject_leave_request(leave_id: str, approver_id: str, comments: str, b
     
     # Get leave request for notification
     leave = await db.leave_requests.find_one({"id": leave_id})
+    if leave:
+        leave = fix_object_id(leave)
     
     # Notify user
     if background_tasks and leave:
