@@ -62,7 +62,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
-app = FastAPI(title="LEXA HR System", version="3.0.0")
+app = FastAPI(title="Timevera HR System", version="3.0.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
