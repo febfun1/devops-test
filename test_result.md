@@ -281,15 +281,18 @@ backend:
 
   - task: "Employee Secret Code Authentication"
     implemented: true
-    working: "unknown"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "unknown"
         agent: "main"
         comment: "Implemented employee secret code authentication system with new User model field and /auth/login-secret endpoint. Need to verify functionality."
+      - working: true
+        agent: "testing"
+        comment: "Successfully tested employee secret code authentication. The /auth/login-secret endpoint works correctly, allowing users to login with their secret code and password. Secret codes are automatically generated during user registration and can be updated via the API."
 
   - task: "All Previous Endpoints Still Working"
     implemented: true
