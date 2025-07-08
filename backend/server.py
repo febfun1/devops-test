@@ -546,6 +546,79 @@ async def login_user(login_data: UserLogin):
         "message": "Login successful"
     }
 
+@api_router.post("/auth/login-secret")
+async def login_user_secret_code(login_data: UserSecretCodeLogin):
+    """Login using secret code instead of email"""
+    user = await db.users.find_one({"secret_code": login_data.secret_code})
+    if not user or not verify_password(login_data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not user["is_active"]:
+        raise HTTPException(status_code=401, detail="Account is deactivated")
+    
+    # Update last login
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"last_login": datetime.utcnow()}}
+    )
+    
+    # Get organization details
+    org = await db.organizations.find_one({"id": user["organization_id"]})
+    
+    # Remove password hash and fix ObjectId from response
+    user_dict = user.copy()
+    del user_dict["password_hash"]
+    user_dict = fix_object_id(user_dict)
+    
+    return {
+        "user": user_dict,
+        "organization": fix_object_id(org) if org else None,
+        "message": "Login successful using secret code"
+    }
+
+@api_router.put("/auth/update-secret-code/{user_id}")
+async def update_secret_code(user_id: str, update_data: SecretCodeUpdate):
+    """Update user's secret code"""
+    # Verify current secret code
+    user = await db.users.find_one({"id": user_id, "secret_code": update_data.current_secret_code})
+    if not user:
+        raise HTTPException(status_code=404, detail="Invalid user or secret code")
+    
+    # Generate new secret code if not provided
+    new_secret_code = update_data.new_secret_code or generate_secret_code()
+    
+    # Ensure the new secret code is unique
+    existing = await db.users.find_one({"secret_code": new_secret_code})
+    while existing:
+        new_secret_code = generate_secret_code()
+        existing = await db.users.find_one({"secret_code": new_secret_code})
+    
+    # Update the secret code
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"secret_code": new_secret_code}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "message": "Secret code updated successfully",
+        "new_secret_code": new_secret_code
+    }
+
+@api_router.get("/auth/get-secret-code/{user_id}")
+async def get_user_secret_code(user_id: str):
+    """Get user's current secret code (for authenticated user only)"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "secret_code": user["secret_code"],
+        "message": "Secret code retrieved successfully"
+    }
+
 # Organization Management
 @api_router.post("/organizations", response_model=Organization)
 async def create_organization(org_data: OrganizationCreate):
