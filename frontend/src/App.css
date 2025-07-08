@@ -625,6 +625,383 @@ body {
   color: white;
 }
 
+/* Feature Highlights */
+.feature-highlights {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.highlight {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* Organization Branding */
+.organization-branding {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.org-logo {
+  height: 40px;
+  width: auto;
+  border-radius: 8px;
+}
+
+/* Subscription Plans */
+.subscription-plans {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.subscription-plans h2 {
+  text-align: center;
+  color: #1e293b;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+}
+
+.currency-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  justify-content: center;
+}
+
+.currency-selector select {
+  padding: 0.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.plan-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.plan-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.plan-card.selected {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.plan-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: inherit;
+}
+
+.price {
+  margin-bottom: 2rem;
+}
+
+.price .amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.price .period {
+  font-size: 1rem;
+  opacity: 0.8;
+  color: inherit;
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.features li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: inherit;
+}
+
+.features li:before {
+  content: "✓ ";
+  color: #10b981;
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+.plan-card.selected .features li:before {
+  color: #60d9fa;
+}
+
+.subscribe-button {
+  background: linear-gradient(45deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.subscribe-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.subscribe-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Organization Settings */
+.organization-settings {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.organization-settings h3 {
+  color: #1e293b;
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+}
+
+.settings-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.logo-preview {
+  margin-top: 1rem;
+}
+
+.logo-preview img {
+  max-height: 100px;
+  max-width: 200px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+}
+
+.save-button {
+  background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.save-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.save-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Payroll Management */
+.payroll-management {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.payroll-management h3 {
+  color: #1e293b;
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+}
+
+.payroll-actions {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.pay-period {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pay-period label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.pay-period input {
+  padding: 0.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.pay-period span {
+  color: #64748b;
+}
+
+.generate-button {
+  background: linear-gradient(45deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.generate-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.generate-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.payroll-records {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.records-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.records-table .table-header {
+  background: #f8fafc;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr;
+  gap: 1rem;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.records-table .table-row {
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr;
+  gap: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  align-items: center;
+}
+
+.records-table .table-row:hover {
+  background: #f8fafc;
+}
+
+.download-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.download-button:hover {
+  background: #1d4ed8;
+}
+
+/* Enhanced Dashboard */
+.dashboard-nav .nav-brand h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.upgrade-badge {
+  background: linear-gradient(45deg, #f59e0b, #d97706);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+/* Subscription Status */
+.subscription-status {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.trial {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.canceled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .hero-section {
@@ -645,7 +1022,15 @@ body {
     font-size: 2.5rem;
   }
   
+  .feature-highlights {
+    grid-template-columns: 1fr;
+  }
+  
   .features-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .plans-grid {
     grid-template-columns: 1fr;
   }
   
@@ -657,6 +1042,9 @@ body {
   
   .nav-menu {
     order: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
   .nav-user {
@@ -694,6 +1082,23 @@ body {
     padding: 1rem;
   }
   
+  .records-table .table-header,
+  .records-table .table-row {
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .records-table .table-header {
+    display: none;
+  }
+  
+  .pay-period {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
   .stats-grid {
     grid-template-columns: 1fr;
   }
@@ -715,5 +1120,11 @@ body {
   
   .hero-content h1 {
     font-size: 2rem;
+  }
+  
+  .subscription-plans,
+  .organization-settings,
+  .payroll-management {
+    padding: 1rem;
   }
 }
