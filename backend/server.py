@@ -547,6 +547,11 @@ async def create_organization(org_data: OrganizationCreate):
     await db.organizations.insert_one(organization.dict())
     return organization
 
+@api_router.get("/organizations")
+async def get_organizations():
+    orgs = await db.organizations.find({}).to_list(100)
+    return [fix_object_id(org) for org in orgs]
+
 @api_router.get("/organizations/{org_id}", response_model=Organization)
 async def get_organization(org_id: str):
     org = await db.organizations.find_one({"id": org_id})
