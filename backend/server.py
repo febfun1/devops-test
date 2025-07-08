@@ -259,6 +259,14 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class UserSecretCodeLogin(BaseModel):
+    secret_code: str
+    password: str
+
+class SecretCodeUpdate(BaseModel):
+    current_secret_code: str
+    new_secret_code: Optional[str] = None  # If None, will generate new one
+
 class LeaveRequest(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
