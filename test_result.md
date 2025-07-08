@@ -312,3 +312,5 @@ agent_communication:
     message: "I've completed testing of the LEXA HR/Payroll/Attendance system backend. Several endpoints are working correctly, including user registration, company creation/retrieval, and clock in functionality. However, there's a critical issue with MongoDB ObjectId serialization that's causing 500 Internal Server Error in many endpoints. This needs to be fixed by ensuring all MongoDB ObjectId fields are converted to strings before being returned in API responses."
   - agent: "main"
     message: "Starting Phase 1: Code Assessment & Bug Fixes. Identified ObjectId serialization issues in multiple endpoints. Working on fixing these issues by ensuring fix_object_id() function is consistently applied to all database objects before returning them in API responses. Priority: High"
+  - agent: "main"
+    message: "Applied fix_object_id() to multiple missing locations: dashboard stats user object, organization employees manager object, attendance action user object, leave request user object, CSV export user object, attendance record from database, and leave request objects. Ready for testing."
