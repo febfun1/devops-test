@@ -596,6 +596,7 @@ async def get_organization_employees(org_id: str):
         if user.get("manager_id"):
             manager = await db.users.find_one({"id": user["manager_id"]})
             if manager:
+                manager = fix_object_id(manager)
                 user["manager_name"] = f"{manager['first_name']} {manager['last_name']}"
         
         employees.append(user)
